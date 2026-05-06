@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#0d1020" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Panini 2026" />
+  <title>Panini WC 2026</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0d1020; font-family: system-ui, sans-serif; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #252840; border-radius: 2px; }
+    input, textarea, select { outline: none; font-family: system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ── STORAGE (localStorage for GitHub Pages) ──────────────────────────────
+    const storage = {
+      get: (key) => {
+        try { const v = localStorage.getItem(key); return v ? { value: v } : null; } catch { return null; }
+      },
+      set: (key, value) => {
+        try { localStorage.setItem(key, value); return true; } catch { return null; }
+      }
+    };
+
+    // ── DATABASE ─────────────────────────────────────────────────────────────
+    const DB = {
+      INTRO: { name: "Introduccion", flag: "🌍", group: null, stickers: [
+        {id:"00",name:"Panini Logo FOIL"},{id:"FWC-1",name:"Official Emblem 1/2 FOIL"},{id:"FWC-2",name:"Official Emblem 2/2 FOIL"},{id:"FWC-3",name:"Official Mascots FOIL"},{id:"FWC-4",name:"Official Slogan FOIL"},{id:"FWC-5",name:"Official Ball FOIL"},{id:"FWC-6",name:"Canada Host Country FOIL"},{id:"FWC-7",name:"Mexico Host Country FOIL"},{id:"FWC-8",name:"USA Host Country FOIL"},{id:"FWC-9",name:"Italia 1934 - FIFA Museum FOIL"},{id:"FWC-10",name:"Uruguay 1950 - FIFA Museum FOIL"},{id:"FWC-11",name:"Alemania Occ 1954 - FIFA Museum FOIL"},{id:"FWC-12",name:"Brasil 1962 - FIFA Museum FOIL"},{id:"FWC-13",name:"Alemania Occ 1974 - FIFA Museum FOIL"},{id:"FWC-14",name:"Argentina 1986 - FIFA Museum FOIL"},{id:"FWC-15",name:"Brasil 1994 - FIFA Museum FOIL"},{id:"FWC-16",name:"Brasil 2002 - FIFA Museum FOIL"},{id:"FWC-17",name:"Italia 2006 - FIFA Museum FOIL"},{id:"FWC-18",name:"Alemania 2014 - FIFA Museum FOIL"},{id:"FWC-19",name:"Argentina 2022 - FIFA Museum FOIL"},
+      ]},
+      MEX:{name:"Mexico",flag:"🇲🇽",group:"A",stickers:[{id:"MEX-1",name:"Emblem FOIL"},{id:"MEX-2",name:"Luis Malagon"},{id:"MEX-3",name:"Johan Vasquez"},{id:"MEX-4",name:"Jorge Sanchez"},{id:"MEX-5",name:"Cesar Montes"},{id:"MEX-6",name:"Jesus Gallardo"},{id:"MEX-7",name:"Israel Reyes"},{id:"MEX-8",name:"Diego Lainez"},{id:"MEX-9",name:"Carlos Rodriguez"},{id:"MEX-10",name:"Edson Alvarez"},{id:"MEX-11",name:"Orbelin Pineda"},{id:"MEX-12",name:"Marcel Ruiz"},{id:"MEX-13",name:"Team Photo"},{id:"MEX-14",name:"Erick Sanchez"},{id:"MEX-15",name:"Hirving Lozano"},{id:"MEX-16",name:"Santiago Gimenez"},{id:"MEX-17",name:"Raul Jimenez"},{id:"MEX-18",name:"Alexis Vega"},{id:"MEX-19",name:"Roberto Alvarado"},{id:"MEX-20",name:"Cesar Huerta"}]},
+      RSA:{name:"Sudafrica",flag:"🇿🇦",group:"A",stickers:[{id:"RSA-1",name:"Emblem FOIL"},{id:"RSA-2",name:"Ronwen Williams"},{id:"RSA-3",name:"Sipho Chaine"},{id:"RSA-4",name:"Aubrey Modiba"},{id:"RSA-5",name:"Siyanda Xulu"},{id:"RSA-6",name:"Mothobi Mvala"},{id:"RSA-7",name:"Njabulo Ngcobo"},{id:"RSA-8",name:"Khuliso Mudau"},{id:"RSA-9",name:"Teboho Mokoena"},{id:"RSA-10",name:"Evidence Makgopa"},{id:"RSA-11",name:"Themba Zwane"},{id:"RSA-12",name:"Lyle Foster"},{id:"RSA-13",name:"Team Photo"},{id:"RSA-14",name:"Bongani Zungu"},{id:"RSA-15",name:"Percy Tau"},{id:"RSA-16",name:"Elias Mokwana"},{id:"RSA-17",name:"Grant Kekana"},{id:"RSA-18",name:"Sphephelo Sithole"},{id:"RSA-19",name:"Fagrie Lakay"},{id:"RSA-20",name:"Bradley Cross"}]},
+      KOR:{name:"Corea del Sur",flag:"🇰🇷",group:"A",stickers:[{id:"KOR-1",name:"Emblem FOIL"},{id:"KOR-2",name:"Kim Seung-gyu"},{id:"KOR-3",name:"Jo Hyeon-woo"},{id:"KOR-4",name:"Kim Jin-su"},{id:"KOR-5",name:"Kim Min-jae"},{id:"KOR-6",name:"Jung Seung-hyun"},{id:"KOR-7",name:"Kim Tae-hwan"},{id:"KOR-8",name:"Kim Moon-hwan"},{id:"KOR-9",name:"Lee Jae-sung"},{id:"KOR-10",name:"Hwang In-beom"},{id:"KOR-11",name:"Son Jun-ho"},{id:"KOR-12",name:"Lee Kang-in"},{id:"KOR-13",name:"Team Photo"},{id:"KOR-14",name:"Jung Woo-young"},{id:"KOR-15",name:"Paik Seung-ho"},{id:"KOR-16",name:"Hwang Hee-chan"},{id:"KOR-17",name:"Cho Gue-sung"},{id:"KOR-18",name:"Oh Hyeon-gyu"},{id:"KOR-19",name:"Son Heung-min"},{id:"KOR-20",name:"Seol Young-woo"}]},
+      CZE:{name:"Chequia",flag:"🇨🇿",group:"A",stickers:[{id:"CZE-1",name:"Emblem FOIL"},{id:"CZE-2",name:"Matej Kovar"},{id:"CZE-3",name:"Jindrich Stanek"},{id:"CZE-4",name:"Ladislav Krejci"},{id:"CZE-5",name:"Vladimir Coufal"},{id:"CZE-6",name:"Jaroslav Zeleny"},{id:"CZE-7",name:"Tomas Holes"},{id:"CZE-8",name:"Tomas Soucek"},{id:"CZE-9",name:"Lukas Provod"},{id:"CZE-10",name:"Lukas Cerv"},{id:"CZE-11",name:"Vaclav Cerny"},{id:"CZE-12",name:"Ondrej Lingr"},{id:"CZE-13",name:"Team Photo"},{id:"CZE-14",name:"Lukas Haraslin"},{id:"CZE-15",name:"Antonin Barak"},{id:"CZE-16",name:"Adam Hlozek"},{id:"CZE-17",name:"Matyas Kvistik"},{id:"CZE-18",name:"Patrik Schick"},{id:"CZE-19",name:"Jan Kuchta"},{id:"CZE-20",name:"Tomas Cvancara"}]},
+      CAN:{name:"Canada",flag:"🇨🇦",group:"B",stickers:[{id:"CAN-1",name:"Emblem FOIL"},{id:"CAN-2",name:"Dayne St.Clair"},{id:"CAN-3",name:"Alphonso Davies"},{id:"CAN-4",name:"Alistair Johnston"},{id:"CAN-5",name:"Samuel Adekugbe"},{id:"CAN-6",name:"Riche Larvea"},{id:"CAN-7",name:"Derek Cornelius"},{id:"CAN-8",name:"Moise Bombito"},{id:"CAN-9",name:"Kamal Miller"},{id:"CAN-10",name:"Stephen Eustaquio"},{id:"CAN-11",name:"Ismael Kone"},{id:"CAN-12",name:"Jonathan Osorio"},{id:"CAN-13",name:"Team Photo"},{id:"CAN-14",name:"Jacob Shaffelburg"},{id:"CAN-15",name:"Mathieu Choiniere"},{id:"CAN-16",name:"Niko Sigur"},{id:"CAN-17",name:"Tajon Buchanan"},{id:"CAN-18",name:"Liam Millar"},{id:"CAN-19",name:"Cyle Larin"},{id:"CAN-20",name:"Jonathan David"}]},
+      BIH:{name:"Bosnia y Herzegovina",flag:"🇧🇦",group:"B",stickers:[{id:"BIH-1",name:"Emblem FOIL"},{id:"BIH-2",name:"Nikola Vasilj"},{id:"BIH-3",name:"Amer Dedic"},{id:"BIH-4",name:"Sead Kolasinac"},{id:"BIH-5",name:"Tarik Muharemovic"},{id:"BIH-6",name:"Nihad Mujakic"},{id:"BIH-7",name:"Nikola Katic"},{id:"BIH-8",name:"Amir Hadziahmetovic"},{id:"BIH-9",name:"Benjamin Tahirovic"},{id:"BIH-10",name:"Armin Gigovic"},{id:"BIH-11",name:"Ivan Sunjic"},{id:"BIH-12",name:"Ivan Basic"},{id:"BIH-13",name:"Team Photo"},{id:"BIH-14",name:"Dzenis Burnic"},{id:"BIH-15",name:"Esmir Bajraktarevic"},{id:"BIH-16",name:"Amar Memic"},{id:"BIH-17",name:"Ermedin Demirovic"},{id:"BIH-18",name:"Edin Dzeko"},{id:"BIH-19",name:"Samed Bazdar"},{id:"BIH-20",name:"Haris Tabakovic"}]},
+      QAT:{name:"Qatar",flag:"🇶🇦",group:"B",stickers:[{id:"QAT-1",name:"Emblem FOIL"},{id:"QAT-2",name:"Meshaal Barsham"},{id:"QAT-3",name:"Salah Zakaria"},{id:"QAT-4",name:"Tarek Salman"},{id:"QAT-5",name:"Bassam Al-Rawi"},{id:"QAT-6",name:"Assim Madibo"},{id:"QAT-7",name:"Homam Al-Amin"},{id:"QAT-8",name:"Karim Boudiaf"},{id:"QAT-9",name:"Abdulaziz Hatem"},{id:"QAT-10",name:"Hassan Al-Haydos"},{id:"QAT-11",name:"Mohammed Waad"},{id:"QAT-12",name:"Ahmed Alaaeldin"},{id:"QAT-13",name:"Team Photo"},{id:"QAT-14",name:"Ismaeel Mohammad"},{id:"QAT-15",name:"Yusuf Abdurisag"},{id:"QAT-16",name:"Akram Afif"},{id:"QAT-17",name:"Salem Al-Hajri"},{id:"QAT-18",name:"Almoez Ali"},{id:"QAT-19",name:"Mohammed Muntari"},{id:"QAT-20",name:"Ahmad Al Zahrani"}]},
+      SUI:{name:"Suiza",flag:"🇨🇭",group:"B",stickers:[{id:"SUI-1",name:"Emblem FOIL"},{id:"SUI-2",name:"Yann Sommer"},{id:"SUI-3",name:"Gregor Kobel"},{id:"SUI-4",name:"Silvan Widmer"},{id:"SUI-5",name:"Manuel Akanji"},{id:"SUI-6",name:"Fabian Schar"},{id:"SUI-7",name:"Ricardo Rodriguez"},{id:"SUI-8",name:"Nico Elvedi"},{id:"SUI-9",name:"Granit Xhaka"},{id:"SUI-10",name:"Remo Freuler"},{id:"SUI-11",name:"Michel Aebischer"},{id:"SUI-12",name:"Fabian Frei"},{id:"SUI-13",name:"Team Photo"},{id:"SUI-14",name:"Dan Ndoye"},{id:"SUI-15",name:"Ruben Vargas"},{id:"SUI-16",name:"Xherdan Shaqiri"},{id:"SUI-17",name:"Zeki Amdouni"},{id:"SUI-18",name:"Kwadwo Duah"},{id:"SUI-19",name:"Breel Embolo"},{id:"SUI-20",name:"Noah Okafor"}]},
+      BRA:{name:"Brasil",flag:"🇧🇷",group:"C",stickers:[{id:"BRA-1",name:"Emblem FOIL"},{id:"BRA-2",name:"Alisson"},{id:"BRA-3",name:"Bento"},{id:"BRA-4",name:"Marquinhos"},{id:"BRA-5",name:"Eder Militao"},{id:"BRA-6",name:"Gabriel Magalhaes"},{id:"BRA-7",name:"Danilo"},{id:"BRA-8",name:"Wesley"},{id:"BRA-9",name:"Lucas Paqueta"},{id:"BRA-10",name:"Casemiro"},{id:"BRA-11",name:"Bruno Guimaraes"},{id:"BRA-12",name:"Luiz Henrique"},{id:"BRA-13",name:"Team Photo"},{id:"BRA-14",name:"Vinicius Junior"},{id:"BRA-15",name:"Rodrygo"},{id:"BRA-16",name:"Joao Pedro"},{id:"BRA-17",name:"Matheus Cunha"},{id:"BRA-18",name:"Gabriel Martinelli"},{id:"BRA-19",name:"Raphinha"},{id:"BRA-20",name:"Estevao"}]},
+      MAR:{name:"Marruecos",flag:"🇲🇦",group:"C",stickers:[{id:"MAR-1",name:"Emblem FOIL"},{id:"MAR-2",name:"Yassine Bounou"},{id:"MAR-3",name:"Munir El Kajoui"},{id:"MAR-4",name:"Achraf Hakimi"},{id:"MAR-5",name:"Nayef Aguerd"},{id:"MAR-6",name:"Romain Saiss"},{id:"MAR-7",name:"Jawad El Yamiq"},{id:"MAR-8",name:"Noussair Mazraoui"},{id:"MAR-9",name:"Attiat-Allah"},{id:"MAR-10",name:"Selim Amallah"},{id:"MAR-11",name:"Sofyan Amrabat"},{id:"MAR-12",name:"Azzedine Ounahi"},{id:"MAR-13",name:"Team Photo"},{id:"MAR-14",name:"Hakim Ziyech"},{id:"MAR-15",name:"Abdessamad Ezzalzouli"},{id:"MAR-16",name:"Ilias Chair"},{id:"MAR-17",name:"Anass Zaroury"},{id:"MAR-18",name:"Youssef En-Nesyri"},{id:"MAR-19",name:"Ayoub El Kaabi"},{id:"MAR-20",name:"Soufiane Rahimi"}]},
+      HAI:{name:"Haiti",flag:"🇭🇹",group:"C",stickers:[{id:"HAI-1",name:"Emblem FOIL"},{id:"HAI-2",name:"Johnny Placide"},{id:"HAI-3",name:"Steeven Saba"},{id:"HAI-4",name:"Mechack Jerome"},{id:"HAI-5",name:"Bechir Ben Said"},{id:"HAI-6",name:"Jems Geffrard"},{id:"HAI-7",name:"Derrick Etienne"},{id:"HAI-8",name:"Frantzdy Pierrot"},{id:"HAI-9",name:"Wilde-Donald Guerrier"},{id:"HAI-10",name:"Duckens Nazon"},{id:"HAI-11",name:"Wisly Cazeau"},{id:"HAI-12",name:"Danley Jean Jacques"},{id:"HAI-13",name:"Team Photo"},{id:"HAI-14",name:"Carlens Arcus"},{id:"HAI-15",name:"Kervens Belfort"},{id:"HAI-16",name:"Romain Gondo"},{id:"HAI-17",name:"Kevin Lafrance"},{id:"HAI-18",name:"Dario Chevalier"},{id:"HAI-19",name:"Pierre-Richard Bruny"},{id:"HAI-20",name:"Naomie Ferjuste"}]},
+      SCO:{name:"Escocia",flag:"🏴󠁧󠁢󠁳󠁣󠁴󠁿",group:"C",stickers:[{id:"SCO-1",name:"Emblem FOIL"},{id:"SCO-2",name:"Angus Gunn"},{id:"SCO-3",name:"Craig Gordon"},{id:"SCO-4",name:"Anthony Ralston"},{id:"SCO-5",name:"Grant Hanley"},{id:"SCO-6",name:"Liam Cooper"},{id:"SCO-7",name:"Andrew Robertson"},{id:"SCO-8",name:"Scott McKenna"},{id:"SCO-9",name:"Ryan Christie"},{id:"SCO-10",name:"Billy Gilmour"},{id:"SCO-11",name:"Stuart Armstrong"},{id:"SCO-12",name:"Kenny McLean"},{id:"SCO-13",name:"Team Photo"},{id:"SCO-14",name:"John McGinn"},{id:"SCO-15",name:"Callum McGregor"},{id:"SCO-16",name:"Ryan Jack"},{id:"SCO-17",name:"Scott McTominay"},{id:"SCO-18",name:"Che Adams"},{id:"SCO-19",name:"Lawrence Shankland"},{id:"SCO-20",name:"Lyndon Dykes"}]},
+      USA:{name:"Estados Unidos",flag:"🇺🇸",group:"D",stickers:[{id:"USA-1",name:"Emblem FOIL"},{id:"USA-2",name:"Matt Turner"},{id:"USA-3",name:"Ethan Horvath"},{id:"USA-4",name:"Sergino Dest"},{id:"USA-5",name:"Mark McKenzie"},{id:"USA-6",name:"Walker Zimmerman"},{id:"USA-7",name:"Antonee Robinson"},{id:"USA-8",name:"Joe Scally"},{id:"USA-9",name:"Tyler Adams"},{id:"USA-10",name:"Weston McKennie"},{id:"USA-11",name:"Yunus Musah"},{id:"USA-12",name:"Gio Reyna"},{id:"USA-13",name:"Team Photo"},{id:"USA-14",name:"Brenden Aaronson"},{id:"USA-15",name:"Tim Weah"},{id:"USA-16",name:"Christian Pulisic"},{id:"USA-17",name:"Ricardo Pepi"},{id:"USA-18",name:"Josh Sargent"},{id:"USA-19",name:"Folarin Balogun"},{id:"USA-20",name:"Cade Cowell"}]},
+      PAR:{name:"Paraguay",flag:"🇵🇾",group:"D",stickers:[{id:"PAR-1",name:"Emblem FOIL"},{id:"PAR-2",name:"Antony Silva"},{id:"PAR-3",name:"Rodrigo Morinigo"},{id:"PAR-4",name:"Gustavo Velazquez"},{id:"PAR-5",name:"Fabian Balbuena"},{id:"PAR-6",name:"Junior Alonso"},{id:"PAR-7",name:"Mathias Villasanti"},{id:"PAR-8",name:"Andres Cubas"},{id:"PAR-9",name:"Angel Cardozo Lucena"},{id:"PAR-10",name:"Richard Sanchez"},{id:"PAR-11",name:"Braian Ojeda"},{id:"PAR-12",name:"Julio Enciso"},{id:"PAR-13",name:"Team Photo"},{id:"PAR-14",name:"Miguel Almiron"},{id:"PAR-15",name:"Celso Ortiz"},{id:"PAR-16",name:"Ramon Sosa"},{id:"PAR-17",name:"Arnaldo Sanabria"},{id:"PAR-18",name:"Alejandro Romero Gamarra"},{id:"PAR-19",name:"Oscar Romero"},{id:"PAR-20",name:"Antonio Sanabria"}]},
+      AUS:{name:"Australia",flag:"🇦🇺",group:"D",stickers:[{id:"AUS-1",name:"Emblem FOIL"},{id:"AUS-2",name:"Mathew Ryan"},{id:"AUS-3",name:"Joe Gauci"},{id:"AUS-4",name:"Harry Souttar"},{id:"AUS-5",name:"Alessandro Circati"},{id:"AUS-6",name:"Jordan Bos"},{id:"AUS-7",name:"Aziz Behich"},{id:"AUS-8",name:"Cameron Burgess"},{id:"AUS-9",name:"Lewis Miller"},{id:"AUS-10",name:"Milos Degenek"},{id:"AUS-11",name:"Jackson Irvine"},{id:"AUS-12",name:"Riley McGree"},{id:"AUS-13",name:"Team Photo"},{id:"AUS-14",name:"Aiden O'Neill"},{id:"AUS-15",name:"Connor Metcalfe"},{id:"AUS-16",name:"Patrick Yazbek"},{id:"AUS-17",name:"Craig Goodwin"},{id:"AUS-18",name:"Kusini Vengi"},{id:"AUS-19",name:"Nestory Irankunda"},{id:"AUS-20",name:"Mohamed Toure"}]},
+      TUR:{name:"Turquia",flag:"🇹🇷",group:"D",stickers:[{id:"TUR-1",name:"Emblem FOIL"},{id:"TUR-2",name:"Altay Bayindir"},{id:"TUR-3",name:"Ugurcan Cakir"},{id:"TUR-4",name:"Zeki Celik"},{id:"TUR-5",name:"Merih Demiral"},{id:"TUR-6",name:"Samet Akaydin"},{id:"TUR-7",name:"Ferdi Kadioglu"},{id:"TUR-8",name:"Mert Muldur"},{id:"TUR-9",name:"Okay Yokuslu"},{id:"TUR-10",name:"Hakan Calhanoglu"},{id:"TUR-11",name:"Kaan Ayhan"},{id:"TUR-12",name:"Salih Ozcan"},{id:"TUR-13",name:"Team Photo"},{id:"TUR-14",name:"Kerem Akturkoglu"},{id:"TUR-15",name:"Cengiz Under"},{id:"TUR-16",name:"Arda Guler"},{id:"TUR-17",name:"Yusuf Yazici"},{id:"TUR-18",name:"Baris Alper Yilmaz"},{id:"TUR-19",name:"Cenk Tosun"},{id:"TUR-20",name:"Kenan Yildiz"}]},
+      GER:{name:"Alemania",flag:"🇩🇪",group:"E",stickers:[{id:"GER-1",name:"Emblem FOIL"},{id:"GER-2",name:"Manuel Neuer"},{id:"GER-3",name:"Marc-Andre ter Stegen"},{id:"GER-4",name:"Joshua Kimmich"},{id:"GER-5",name:"Jonathan Tah"},{id:"GER-6",name:"Nico Schlotterbeck"},{id:"GER-7",name:"Antonio Rudiger"},{id:"GER-8",name:"Maximilian Mittelstadt"},{id:"GER-9",name:"Leon Goretzka"},{id:"GER-10",name:"Toni Kroos"},{id:"GER-11",name:"Florian Wirtz"},{id:"GER-12",name:"Jamal Musiala"},{id:"GER-13",name:"Team Photo"},{id:"GER-14",name:"Leroy Sane"},{id:"GER-15",name:"Ilkay Gundogan"},{id:"GER-16",name:"Thomas Muller"},{id:"GER-17",name:"Serge Gnabry"},{id:"GER-18",name:"Niclas Fullkrug"},{id:"GER-19",name:"Kai Havertz"},{id:"GER-20",name:"Tim Kleindienst"}]},
+      CUW:{name:"Curazao",flag:"🇨🇼",group:"E",stickers:[{id:"CUW-1",name:"Emblem FOIL"},{id:"CUW-2",name:"Eloy Room"},{id:"CUW-3",name:"Armando Obispo"},{id:"CUW-4",name:"Sherel Floranus"},{id:"CUW-5",name:"Jurien Gaari"},{id:"CUW-6",name:"Joshua Brenet"},{id:"CUW-7",name:"Roshon Van Eijma"},{id:"CUW-8",name:"Shurandy Sambo"},{id:"CUW-9",name:"Livano Comenencia"},{id:"CUW-10",name:"Godfried Roemeratoe"},{id:"CUW-11",name:"Juninho Bacuna"},{id:"CUW-12",name:"Leandro Bacuna"},{id:"CUW-13",name:"Team Photo"},{id:"CUW-14",name:"Tahith Chong"},{id:"CUW-15",name:"Kenji Gorre"},{id:"CUW-16",name:"Jearl Margaritha"},{id:"CUW-17",name:"Jurgen Locadia"},{id:"CUW-18",name:"Jeremy Antonisse"},{id:"CUW-19",name:"Gervane Kastaneer"},{id:"CUW-20",name:"Sontje Hansen"}]},
+      CIV:{name:"Costa de Marfil",flag:"🇨🇮",group:"E",stickers:[{id:"CIV-1",name:"Emblem FOIL"},{id:"CIV-2",name:"Yahia Fofana"},{id:"CIV-3",name:"Ghislain Konan"},{id:"CIV-4",name:"Wilfried Singo"},{id:"CIV-5",name:"Odilon Kossounou"},{id:"CIV-6",name:"Evan Ndicka"},{id:"CIV-7",name:"Willy Boly"},{id:"CIV-8",name:"Emmanuel Agbadou"},{id:"CIV-9",name:"Ousmane Diomande"},{id:"CIV-10",name:"Franck Kessie"},{id:"CIV-11",name:"Seko Fofana"},{id:"CIV-12",name:"Ibrahim Sangare"},{id:"CIV-13",name:"Team Photo"},{id:"CIV-14",name:"Jean-Philippe Gbamin"},{id:"CIV-15",name:"Amad Diallo"},{id:"CIV-16",name:"Sebastien Haller"},{id:"CIV-17",name:"Simon Adringa"},{id:"CIV-18",name:"Yan Diomande"},{id:"CIV-19",name:"Evann Guessand"},{id:"CIV-20",name:"Oumar Diakite"}]},
+      ECU:{name:"Ecuador",flag:"🇪🇨",group:"E",stickers:[{id:"ECU-1",name:"Emblem FOIL"},{id:"ECU-2",name:"Alexander Dominguez"},{id:"ECU-3",name:"Hernan Galindez"},{id:"ECU-4",name:"Piero Hincapie"},{id:"ECU-5",name:"Felix Torres"},{id:"ECU-6",name:"Robert Arboleda"},{id:"ECU-7",name:"Diego Palacios"},{id:"ECU-8",name:"Julio Plata"},{id:"ECU-9",name:"Angelo Preciado"},{id:"ECU-10",name:"Moises Caicedo"},{id:"ECU-11",name:"Carlos Gruezo"},{id:"ECU-12",name:"Alan Minda"},{id:"ECU-13",name:"Team Photo"},{id:"ECU-14",name:"Jeremy Sarmiento"},{id:"ECU-15",name:"Gonzalo Plata"},{id:"ECU-16",name:"Kevin Rodriguez"},{id:"ECU-17",name:"Djorkaeff Reasco"},{id:"ECU-18",name:"Enner Valencia"},{id:"ECU-19",name:"Kevin Minda"},{id:"ECU-20",name:"Leonardo Campana"}]},
+      NED:{name:"Paises Bajos",flag:"🇳🇱",group:"F",stickers:[{id:"NED-1",name:"Emblem FOIL"},{id:"NED-2",name:"Bart Verbruggen"},{id:"NED-3",name:"Mark Flekken"},{id:"NED-4",name:"Virgil van Dijk"},{id:"NED-5",name:"Stefan de Vrij"},{id:"NED-6",name:"Matthijs de Ligt"},{id:"NED-7",name:"Denzel Dumfries"},{id:"NED-8",name:"Nathan Ake"},{id:"NED-9",name:"Frenkie de Jong"},{id:"NED-10",name:"Tijjani Reijnders"},{id:"NED-11",name:"Ryan Gravenberch"},{id:"NED-12",name:"Teun Koopmeiners"},{id:"NED-13",name:"Team Photo"},{id:"NED-14",name:"Xavi Simons"},{id:"NED-15",name:"Cody Gakpo"},{id:"NED-16",name:"Donyell Malen"},{id:"NED-17",name:"Steven Bergwijn"},{id:"NED-18",name:"Memphis Depay"},{id:"NED-19",name:"Wout Weghorst"},{id:"NED-20",name:"Brian Brobbey"}]},
+      JPN:{name:"Japon",flag:"🇯🇵",group:"F",stickers:[{id:"JPN-1",name:"Emblem FOIL"},{id:"JPN-2",name:"Shuichi Gonda"},{id:"JPN-3",name:"Zion Suzuki"},{id:"JPN-4",name:"Takehiro Tomiyasu"},{id:"JPN-5",name:"Maya Yoshida"},{id:"JPN-6",name:"Ko Itakura"},{id:"JPN-7",name:"Yuto Nagatomo"},{id:"JPN-8",name:"Miki Yamane"},{id:"JPN-9",name:"Wataru Endo"},{id:"JPN-10",name:"Hidemasa Morita"},{id:"JPN-11",name:"Gaku Shibasaki"},{id:"JPN-12",name:"Junya Ito"},{id:"JPN-13",name:"Team Photo"},{id:"JPN-14",name:"Takumi Minamino"},{id:"JPN-15",name:"Daichi Kamada"},{id:"JPN-16",name:"Kaoru Mitoma"},{id:"JPN-17",name:"Ritsu Doan"},{id:"JPN-18",name:"Takefusa Kubo"},{id:"JPN-19",name:"Ayase Ueda"},{id:"JPN-20",name:"Shuto Machino"}]},
+      SWE:{name:"Suecia",flag:"🇸🇪",group:"F",stickers:[{id:"SWE-1",name:"Emblem FOIL"},{id:"SWE-2",name:"Robin Olsen"},{id:"SWE-3",name:"Karl-Johan Johnsson"},{id:"SWE-4",name:"Emil Krafth"},{id:"SWE-5",name:"Isak Hien"},{id:"SWE-6",name:"Victor Lindelof"},{id:"SWE-7",name:"Ludwig Augustinsson"},{id:"SWE-8",name:"Joakim Nilsson"},{id:"SWE-9",name:"Albin Ekdal"},{id:"SWE-10",name:"Kristoffer Olsson"},{id:"SWE-11",name:"Viktor Claesson"},{id:"SWE-12",name:"Mattias Svanberg"},{id:"SWE-13",name:"Team Photo"},{id:"SWE-14",name:"Jesper Karlsson"},{id:"SWE-15",name:"Emil Forsberg"},{id:"SWE-16",name:"Dejan Kulusevski"},{id:"SWE-17",name:"Jens-Lys Cajuste"},{id:"SWE-18",name:"Robin Quaison"},{id:"SWE-19",name:"Alexander Isak"},{id:"SWE-20",name:"Jordan Larsson"}]},
+      TUN:{name:"Tunez",flag:"🇹🇳",group:"F",stickers:[{id:"TUN-1",name:"Emblem FOIL"},{id:"TUN-2",name:"Aymen Dahmen"},{id:"TUN-3",name:"Bechir Ben Said"},{id:"TUN-4",name:"Nader Ghandri"},{id:"TUN-5",name:"Yassine Meriah"},{id:"TUN-6",name:"Dylan Bronn"},{id:"TUN-7",name:"Ali Abdi"},{id:"TUN-8",name:"Montassar Talbi"},{id:"TUN-9",name:"Ellyes Skhiri"},{id:"TUN-10",name:"Anis Ben Slimane"},{id:"TUN-11",name:"Hannibal Mejbri"},{id:"TUN-12",name:"Mohamed Ali Ben Romdhane"},{id:"TUN-13",name:"Team Photo"},{id:"TUN-14",name:"Ghailene Chaalali"},{id:"TUN-15",name:"Naim Sliti"},{id:"TUN-16",name:"Wahbi Khazri"},{id:"TUN-17",name:"Saif-Eddine Khaoui"},{id:"TUN-18",name:"Youssef Msakni"},{id:"TUN-19",name:"Seifeddine Jaziri"},{id:"TUN-20",name:"Issam Jebali"}]},
+      BEL:{name:"Belgica",flag:"🇧🇪",group:"G",stickers:[{id:"BEL-1",name:"Emblem FOIL"},{id:"BEL-2",name:"Thibaut Courtois"},{id:"BEL-3",name:"Arthur Theate"},{id:"BEL-4",name:"Timothy Castagne"},{id:"BEL-5",name:"Zeno Debast"},{id:"BEL-6",name:"Brandon Mechele"},{id:"BEL-7",name:"Maxim De Cuyper"},{id:"BEL-8",name:"Thomas Meunier"},{id:"BEL-9",name:"Youri Tielemans"},{id:"BEL-10",name:"Amadou Onana"},{id:"BEL-11",name:"Nicolas Raskin"},{id:"BEL-12",name:"Alexis Saelemaekers"},{id:"BEL-13",name:"Team Photo"},{id:"BEL-14",name:"Hans Vanaken"},{id:"BEL-15",name:"Kevin De Bruyne"},{id:"BEL-16",name:"Jeremy Doku"},{id:"BEL-17",name:"Charles De Ketelaere"},{id:"BEL-18",name:"Leandro Trossard"},{id:"BEL-19",name:"Lois Openda"},{id:"BEL-20",name:"Romelu Lukaku"}]},
+      EGY:{name:"Egipto",flag:"🇪🇬",group:"G",stickers:[{id:"EGY-1",name:"Emblem FOIL"},{id:"EGY-2",name:"Mohamed Abou Gabal"},{id:"EGY-3",name:"Omar Kamal"},{id:"EGY-4",name:"Ahmed Hegazi"},{id:"EGY-5",name:"Ahmed Fattouh"},{id:"EGY-6",name:"Mahmoud Hamdi"},{id:"EGY-7",name:"Omar Gaber"},{id:"EGY-8",name:"Mostafa Mohamed"},{id:"EGY-9",name:"Ahmed Sayed"},{id:"EGY-10",name:"Emam Ashour"},{id:"EGY-11",name:"Mohamed Elneny"},{id:"EGY-12",name:"Taher Mohamed Taher"},{id:"EGY-13",name:"Team Photo"},{id:"EGY-14",name:"Trezeguet"},{id:"EGY-15",name:"Omar Marmoush"},{id:"EGY-16",name:"Amr El Sulaya"},{id:"EGY-17",name:"Ahmed Abou El Yazid"},{id:"EGY-18",name:"Mohamed Salah"},{id:"EGY-19",name:"Kahraba"},{id:"EGY-20",name:"Zizo"}]},
+      IRN:{name:"Iran",flag:"🇮🇷",group:"G",stickers:[{id:"IRN-1",name:"Emblem FOIL"},{id:"IRN-2",name:"Alireza Beiranvand"},{id:"IRN-3",name:"Pavand Hosseini"},{id:"IRN-4",name:"Ramin Rezaeian"},{id:"IRN-5",name:"Morteza Pouraliganji"},{id:"IRN-6",name:"Majid Hosseini"},{id:"IRN-7",name:"Shoja Khalilzadeh"},{id:"IRN-8",name:"Ahmad Nourollahi"},{id:"IRN-9",name:"Saeid Ezatolahi"},{id:"IRN-10",name:"Ali Gholizadeh"},{id:"IRN-11",name:"Mehdi Torabi"},{id:"IRN-12",name:"Milad Mohammadi"},{id:"IRN-13",name:"Team Photo"},{id:"IRN-14",name:"Ehsan Hajsafi"},{id:"IRN-15",name:"Sardar Azmoun"},{id:"IRN-16",name:"Allahyar Sayyadmanesh"},{id:"IRN-17",name:"Karim Ansarifard"},{id:"IRN-18",name:"Mehdi Taremi"},{id:"IRN-19",name:"Saman Ghoddos"},{id:"IRN-20",name:"Roozbeh Cheshmi"}]},
+      NZL:{name:"Nueva Zelanda",flag:"🇳🇿",group:"G",stickers:[{id:"NZL-1",name:"Emblem FOIL"},{id:"NZL-2",name:"Stefan Marinovic"},{id:"NZL-3",name:"Michael Woud"},{id:"NZL-4",name:"Liberato Cacace"},{id:"NZL-5",name:"Tim Payne"},{id:"NZL-6",name:"Nando Pijnaker"},{id:"NZL-7",name:"Tommy Smith"},{id:"NZL-8",name:"Michael Boxall"},{id:"NZL-9",name:"Joe Bell"},{id:"NZL-10",name:"Clayton Lewis"},{id:"NZL-11",name:"Elijah Just"},{id:"NZL-12",name:"Ben Old"},{id:"NZL-13",name:"Team Photo"},{id:"NZL-14",name:"Marko Stamenic"},{id:"NZL-15",name:"Ryan Thomas"},{id:"NZL-16",name:"Matthew Garbett"},{id:"NZL-17",name:"Kosta Barbarouses"},{id:"NZL-18",name:"Sarpreet Singh"},{id:"NZL-19",name:"Chris Wood"},{id:"NZL-20",name:"Oskar Zawadzki"}]},
+      ESP:{name:"Espana",flag:"🇪🇸",group:"H",stickers:[{id:"ESP-1",name:"Emblem FOIL"},{id:"ESP-2",name:"Unai Simon"},{id:"ESP-3",name:"David Raya"},{id:"ESP-4",name:"Dani Carvajal"},{id:"ESP-5",name:"Robin Le Normand"},{id:"ESP-6",name:"Aymeric Laporte"},{id:"ESP-7",name:"Marc Cucurella"},{id:"ESP-8",name:"Dani Olmo"},{id:"ESP-9",name:"Pedri"},{id:"ESP-10",name:"Fabian Ruiz"},{id:"ESP-11",name:"Martin Zubimendi"},{id:"ESP-12",name:"Mikel Merino"},{id:"ESP-13",name:"Team Photo"},{id:"ESP-14",name:"Ferran Torres"},{id:"ESP-15",name:"Nico Williams"},{id:"ESP-16",name:"Lamine Yamal"},{id:"ESP-17",name:"Alvaro Morata"},{id:"ESP-18",name:"Ayoze Perez"},{id:"ESP-19",name:"Joselu"},{id:"ESP-20",name:"Bryan Mbeumo"}]},
+      CPV:{name:"Cabo Verde",flag:"🇨🇻",group:"H",stickers:[{id:"CPV-1",name:"Emblem FOIL"},{id:"CPV-2",name:"Vozinha"},{id:"CPV-3",name:"Logan Costa"},{id:"CPV-4",name:"Pico"},{id:"CPV-5",name:"Diney"},{id:"CPV-6",name:"Steven Moreira"},{id:"CPV-7",name:"Wagner Pina"},{id:"CPV-8",name:"Joao Paulo"},{id:"CPV-9",name:"Yannick Semedo"},{id:"CPV-10",name:"Kevin Pina"},{id:"CPV-11",name:"Patrick Andrade"},{id:"CPV-12",name:"Jamiro Monteiro"},{id:"CPV-13",name:"Team Photo"},{id:"CPV-14",name:"Deroy Duarte"},{id:"CPV-15",name:"Garry Rodrigues"},{id:"CPV-16",name:"Jovane Cabral"},{id:"CPV-17",name:"Ryan Mendes"},{id:"CPV-18",name:"Dailon Livramento"},{id:"CPV-19",name:"Willy Semedo"},{id:"CPV-20",name:"Bebe"}]},
+      KSA:{name:"Arabia Saudita",flag:"🇸🇦",group:"H",stickers:[{id:"KSA-1",name:"Emblem FOIL"},{id:"KSA-2",name:"Mohammed Al-Owais"},{id:"KSA-3",name:"Sultan Al-Ghannam"},{id:"KSA-4",name:"Mohammed Al-Breik"},{id:"KSA-5",name:"Hassan Tambakti"},{id:"KSA-6",name:"Ali Al-Hassan"},{id:"KSA-7",name:"Saud Abdulhamid"},{id:"KSA-8",name:"Mohammed Kano"},{id:"KSA-9",name:"Abdullah Otayf"},{id:"KSA-10",name:"Nasser Al-Dawsari"},{id:"KSA-11",name:"Hattan Bahebri"},{id:"KSA-12",name:"Ali Al-Bulaihi"},{id:"KSA-13",name:"Team Photo"},{id:"KSA-14",name:"Ayman Yahya"},{id:"KSA-15",name:"Fahad Al-Muwallad"},{id:"KSA-16",name:"Abdulrahman Al-Aboud"},{id:"KSA-17",name:"Salem Al-Dosari"},{id:"KSA-18",name:"Firas Al-Buraikan"},{id:"KSA-19",name:"Saleh Al-Shehri"},{id:"KSA-20",name:"Mohamed Kanno"}]},
+      URU:{name:"Uruguay",flag:"🇺🇾",group:"H",stickers:[{id:"URU-1",name:"Emblem FOIL"},{id:"URU-2",name:"Sergio Rochet"},{id:"URU-3",name:"Sebastian Sosa"},{id:"URU-4",name:"Ronald Araujo"},{id:"URU-5",name:"Jose Maria Gimenez"},{id:"URU-6",name:"Mathias Olivera"},{id:"URU-7",name:"Nahitan Nandez"},{id:"URU-8",name:"Facundo Pellistri"},{id:"URU-9",name:"Rodrigo Bentancur"},{id:"URU-10",name:"Lucas Torreira"},{id:"URU-11",name:"Federico Valverde"},{id:"URU-12",name:"Mauro Arambarri"},{id:"URU-13",name:"Team Photo"},{id:"URU-14",name:"Brian Rodriguez"},{id:"URU-15",name:"Giorgian de Arrascaeta"},{id:"URU-16",name:"Maximiliano Araujo"},{id:"URU-17",name:"Darwin Nunez"},{id:"URU-18",name:"Edinson Cavani"},{id:"URU-19",name:"Facundo Torres"},{id:"URU-20",name:"Luis Suarez"}]},
+      FRA:{name:"Francia",flag:"🇫🇷",group:"I",stickers:[{id:"FRA-1",name:"Emblem FOIL"},{id:"FRA-2",name:"Mike Maignan"},{id:"FRA-3",name:"Brice Samba"},{id:"FRA-4",name:"William Saliba"},{id:"FRA-5",name:"Dayot Upamecano"},{id:"FRA-6",name:"Jules Kounde"},{id:"FRA-7",name:"Theo Hernandez"},{id:"FRA-8",name:"Eduardo Camavinga"},{id:"FRA-9",name:"Adrien Rabiot"},{id:"FRA-10",name:"N'Golo Kante"},{id:"FRA-11",name:"Aurelien Tchouameni"},{id:"FRA-12",name:"Matteo Guendouzi"},{id:"FRA-13",name:"Team Photo"},{id:"FRA-14",name:"Antoine Griezmann"},{id:"FRA-15",name:"Christopher Nkunku"},{id:"FRA-16",name:"Ousmane Dembele"},{id:"FRA-17",name:"Michael Olise"},{id:"FRA-18",name:"Bradley Barcola"},{id:"FRA-19",name:"Kylian Mbappe"},{id:"FRA-20",name:"Olivier Giroud"}]},
+      SEN:{name:"Senegal",flag:"🇸🇳",group:"I",stickers:[{id:"SEN-1",name:"Emblem FOIL"},{id:"SEN-2",name:"Edouard Mendy"},{id:"SEN-3",name:"Alfred Gomis"},{id:"SEN-4",name:"Kalidou Koulibaly"},{id:"SEN-5",name:"Abdou Diallo"},{id:"SEN-6",name:"Pape Abou Cisse"},{id:"SEN-7",name:"Fode Ballo-Toure"},{id:"SEN-8",name:"Youssouf Sabaly"},{id:"SEN-9",name:"Nampalys Mendy"},{id:"SEN-10",name:"Cheikhou Kouyate"},{id:"SEN-11",name:"Idrissa Gueye"},{id:"SEN-12",name:"Pathe Ciss"},{id:"SEN-13",name:"Team Photo"},{id:"SEN-14",name:"Pape Gueye"},{id:"SEN-15",name:"Ismaila Sarr"},{id:"SEN-16",name:"Krepin Diatta"},{id:"SEN-17",name:"Iliman Ndiaye"},{id:"SEN-18",name:"Nicolas Jackson"},{id:"SEN-19",name:"Sadio Mane"},{id:"SEN-20",name:"Habib Diallo"}]},
+      IRQ:{name:"Irak",flag:"🇮🇶",group:"I",stickers:[{id:"IRQ-1",name:"Emblem FOIL"},{id:"IRQ-2",name:"Jalal Hassan"},{id:"IRQ-3",name:"Mohammed Hameed"},{id:"IRQ-4",name:"Mustafa Nadhim"},{id:"IRQ-5",name:"Safa Hadi"},{id:"IRQ-6",name:"Ali Adnan"},{id:"IRQ-7",name:"Amjad Attwan"},{id:"IRQ-8",name:"Saad Abdul Amir"},{id:"IRQ-9",name:"Bashar Resan"},{id:"IRQ-10",name:"Osama Rashid"},{id:"IRQ-11",name:"Ibrahim Bayesh"},{id:"IRQ-12",name:"Alaa Abbas"},{id:"IRQ-13",name:"Team Photo"},{id:"IRQ-14",name:"Mohanad Ali"},{id:"IRQ-15",name:"Aymen Hussein"},{id:"IRQ-16",name:"Humam Tariq"},{id:"IRQ-17",name:"Ahmed Yasin"},{id:"IRQ-18",name:"Amir Al-Ammari"},{id:"IRQ-19",name:"Ameen Al-Dakhil"},{id:"IRQ-20",name:"Odai Al-Rashid"}]},
+      NOR:{name:"Noruega",flag:"🇳🇴",group:"I",stickers:[{id:"NOR-1",name:"Emblem FOIL"},{id:"NOR-2",name:"Orjan Nyland"},{id:"NOR-3",name:"Jorgen Strand Larsen"},{id:"NOR-4",name:"Leo Ostigard"},{id:"NOR-5",name:"Andreas Hanche-Olsen"},{id:"NOR-6",name:"Birger Meling"},{id:"NOR-7",name:"Julian Ryerson"},{id:"NOR-8",name:"Mathias Normann"},{id:"NOR-9",name:"Martin Odegaard"},{id:"NOR-10",name:"Sander Berge"},{id:"NOR-11",name:"Patrick Berg"},{id:"NOR-12",name:"Fredrik Aursnes"},{id:"NOR-13",name:"Team Photo"},{id:"NOR-14",name:"Morten Thorsby"},{id:"NOR-15",name:"Mohamed Elyounoussi"},{id:"NOR-16",name:"Ola Solbakken"},{id:"NOR-17",name:"Antonio Nusa"},{id:"NOR-18",name:"Andreas Skov Olsen"},{id:"NOR-19",name:"Erling Haaland"},{id:"NOR-20",name:"Alexander Sorloth"}]},
+      ARG:{name:"Argentina",flag:"🇦🇷",group:"J",stickers:[{id:"ARG-1",name:"Emblem FOIL"},{id:"ARG-2",name:"Emiliano Martinez"},{id:"ARG-3",name:"Nahuel Molina"},{id:"ARG-4",name:"Cristian Romero"},{id:"ARG-5",name:"Nicolas Otamendi"},{id:"ARG-6",name:"Nicolas Tagliafico"},{id:"ARG-7",name:"Leonardo Balerdi"},{id:"ARG-8",name:"Enzo Fernandez"},{id:"ARG-9",name:"Alexis Mac Allister"},{id:"ARG-10",name:"Rodrigo De Paul"},{id:"ARG-11",name:"Exequiel Palacios"},{id:"ARG-12",name:"Leandro Paredes"},{id:"ARG-13",name:"Team Photo"},{id:"ARG-14",name:"Nico Paz"},{id:"ARG-15",name:"Franco Mastantuono"},{id:"ARG-16",name:"Nico Gonzalez"},{id:"ARG-17",name:"Lionel Messi"},{id:"ARG-18",name:"Lautaro Martinez"},{id:"ARG-19",name:"Julian Alvarez"},{id:"ARG-20",name:"Giuliano Simeone"}]},
+      ALG:{name:"Argelia",flag:"🇩🇿",group:"J",stickers:[{id:"ALG-1",name:"Emblem FOIL"},{id:"ALG-2",name:"Alexis Guendouz"},{id:"ALG-3",name:"Ramy Bensebaini"},{id:"ALG-4",name:"Youcef Atal"},{id:"ALG-5",name:"Rayan Ait-Nouri"},{id:"ALG-6",name:"Mohamed Amine Tougai"},{id:"ALG-7",name:"Aissa Mandi"},{id:"ALG-8",name:"Ismael Bennacer"},{id:"ALG-9",name:"Houssem Aquar"},{id:"ALG-10",name:"Hicham Boudaoui"},{id:"ALG-11",name:"Ramiz Zerrouki"},{id:"ALG-12",name:"Nabil Bentalab"},{id:"ALG-13",name:"Team Photo"},{id:"ALG-14",name:"Fares Chaibi"},{id:"ALG-15",name:"Riyad Mahrez"},{id:"ALG-16",name:"Said Benrhama"},{id:"ALG-17",name:"Anis Hadj Moussa"},{id:"ALG-18",name:"Amine Gouiri"},{id:"ALG-19",name:"Baghdad Bounedjah"},{id:"ALG-20",name:"Mohammed Amoura"}]},
+      AUT:{name:"Austria",flag:"🇦🇹",group:"J",stickers:[{id:"AUT-1",name:"Emblem FOIL"},{id:"AUT-2",name:"Alexander Schlager"},{id:"AUT-3",name:"Patrick Pentz"},{id:"AUT-4",name:"David Alaba"},{id:"AUT-5",name:"Kevin Danso"},{id:"AUT-6",name:"Philipp Lienhart"},{id:"AUT-7",name:"Stefan Bosch"},{id:"AUT-8",name:"Phillipp Mwene"},{id:"AUT-9",name:"Alexander Prass"},{id:"AUT-10",name:"Xavier Schlager"},{id:"AUT-11",name:"Marcel Sabitzer"},{id:"AUT-12",name:"Konrad Laimer"},{id:"AUT-13",name:"Team Photo"},{id:"AUT-14",name:"Florian Grillitsch"},{id:"AUT-15",name:"Nicolas Seiwald"},{id:"AUT-16",name:"Romano Schmid"},{id:"AUT-17",name:"Patrick Wimmer"},{id:"AUT-18",name:"Christoph Baumgartner"},{id:"AUT-19",name:"Michael Gregoritsch"},{id:"AUT-20",name:"Marko Arnautovic"}]},
+      JOR:{name:"Jordania",flag:"🇯🇴",group:"J",stickers:[{id:"JOR-1",name:"Emblem FOIL"},{id:"JOR-2",name:"Amer Shafi"},{id:"JOR-3",name:"Muntasir Al Sarayra"},{id:"JOR-4",name:"Sanad Naser"},{id:"JOR-5",name:"Yazan Al-Naimat"},{id:"JOR-6",name:"Baha Faisal"},{id:"JOR-7",name:"Ahmad Abu Eid"},{id:"JOR-8",name:"Mahmoud Younes"},{id:"JOR-9",name:"Nizar Al-Rashdan"},{id:"JOR-10",name:"Musa Al-Tamari"},{id:"JOR-11",name:"Abdullah Nasib"},{id:"JOR-12",name:"Yazan Al-Arab"},{id:"JOR-13",name:"Team Photo"},{id:"JOR-14",name:"Hamza Igbariyeh"},{id:"JOR-15",name:"Islam Batran"},{id:"JOR-16",name:"Osama Rashid"},{id:"JOR-17",name:"Ahmad Gharaibeh"},{id:"JOR-18",name:"Mousa Al-Tamari 2"},{id:"JOR-19",name:"Ahmad Saleh"},{id:"JOR-20",name:"Eslam Ahmad"}]},
+      POR:{name:"Portugal",flag:"🇵🇹",group:"K",stickers:[{id:"POR-1",name:"Emblem FOIL"},{id:"POR-2",name:"Diogo Costa"},{id:"POR-3",name:"Jose Sa"},{id:"POR-4",name:"Joao Cancelo"},{id:"POR-5",name:"Ruben Dias"},{id:"POR-6",name:"Goncalo Inacio"},{id:"POR-7",name:"Nuno Mendes"},{id:"POR-8",name:"Vitinha"},{id:"POR-9",name:"Bernardo Silva"},{id:"POR-10",name:"Ruben Neves"},{id:"POR-11",name:"Joao Palhinha"},{id:"POR-12",name:"Otavio"},{id:"POR-13",name:"Team Photo"},{id:"POR-14",name:"Diogo Jota"},{id:"POR-15",name:"Pedro Neto"},{id:"POR-16",name:"Rafael Leao"},{id:"POR-17",name:"Joao Felix"},{id:"POR-18",name:"Goncalo Ramos"},{id:"POR-19",name:"Cristiano Ronaldo"},{id:"POR-20",name:"Ricardo Horta"}]},
+      COD:{name:"Congo DR",flag:"🇨🇩",group:"K",stickers:[{id:"COD-1",name:"Emblem FOIL"},{id:"COD-2",name:"Lionel Mpasi"},{id:"COD-3",name:"Aaron Wan-Bissaka"},{id:"COD-4",name:"Axel Tuanzebe"},{id:"COD-5",name:"Arthur Masuaku"},{id:"COD-6",name:"Chancel Mbemba"},{id:"COD-7",name:"Joris Kayembe"},{id:"COD-8",name:"Charles Pickel"},{id:"COD-9",name:"Ngal'ayel Mukau"},{id:"COD-10",name:"Edo Kayembe"},{id:"COD-11",name:"Samuel Moutoussamy"},{id:"COD-12",name:"Noah Sadiki"},{id:"COD-13",name:"Team Photo"},{id:"COD-14",name:"Theo Bongonda"},{id:"COD-15",name:"Meschak Elia"},{id:"COD-16",name:"Yoane Wissa"},{id:"COD-17",name:"Brian Cipenga"},{id:"COD-18",name:"Fiston Mayele"},{id:"COD-19",name:"Cedric Bakambu"},{id:"COD-20",name:"Nathanael Mbuku"}]},
+      UZB:{name:"Uzbekistan",flag:"🇺🇿",group:"K",stickers:[{id:"UZB-1",name:"Emblem FOIL"},{id:"UZB-2",name:"Utkirbek Yusupov"},{id:"UZB-3",name:"Eldor Shomurodov"},{id:"UZB-4",name:"Sanjar Tursunov"},{id:"UZB-5",name:"Temur Juraev"},{id:"UZB-6",name:"Dostonbek Tursunov"},{id:"UZB-7",name:"Otabek Shukurov"},{id:"UZB-8",name:"Abbosbek Fayzullaev"},{id:"UZB-9",name:"Jamshid Iskanderov"},{id:"UZB-10",name:"Alijon Ganiev"},{id:"UZB-11",name:"Jasur Yakhshiboev"},{id:"UZB-12",name:"Khojiakbar Alijonov"},{id:"UZB-13",name:"Team Photo"},{id:"UZB-14",name:"Sherzod Nishonov"},{id:"UZB-15",name:"Ibrokhim Olimov"},{id:"UZB-16",name:"Mirzohid Osimov"},{id:"UZB-17",name:"Azizbek Turgunboev"},{id:"UZB-18",name:"Bobur Abdixoliqov"},{id:"UZB-19",name:"Jaloliddin Masharipov"},{id:"UZB-20",name:"Akramjon Komilov"}]},
+      COL:{name:"Colombia",flag:"🇨🇴",group:"K",stickers:[{id:"COL-1",name:"Emblem FOIL"},{id:"COL-2",name:"Camilo Vargas"},{id:"COL-3",name:"David Ospina"},{id:"COL-4",name:"Davinson Sanchez"},{id:"COL-5",name:"Yerry Mina"},{id:"COL-6",name:"Daniel Munoz"},{id:"COL-7",name:"Johan Mojica"},{id:"COL-8",name:"Jhon Lucumi"},{id:"COL-9",name:"Santiago Arias"},{id:"COL-10",name:"Jefferson Lerma"},{id:"COL-11",name:"Kevin Castano"},{id:"COL-12",name:"Richard Rios"},{id:"COL-13",name:"Team Photo"},{id:"COL-14",name:"James Rodriguez"},{id:"COL-15",name:"Juan Fernando Quintero"},{id:"COL-16",name:"Jorge Carrascal"},{id:"COL-17",name:"Jhon Arias"},{id:"COL-18",name:"Jhon Cordova"},{id:"COL-19",name:"Luis Suarez"},{id:"COL-20",name:"Luis Diaz"}]},
+      ENG:{name:"Inglaterra",flag:"🏴󠁧󠁢󠁥󠁮󠁧󠁿",group:"L",stickers:[{id:"ENG-1",name:"Emblem FOIL"},{id:"ENG-2",name:"Jordan Pickford"},{id:"ENG-3",name:"Dean Henderson"},{id:"ENG-4",name:"Trent Alexander-Arnold"},{id:"ENG-5",name:"John Stones"},{id:"ENG-6",name:"Marc Guehi"},{id:"ENG-7",name:"Ezri Konsa"},{id:"ENG-8",name:"Luke Shaw"},{id:"ENG-9",name:"Declan Rice"},{id:"ENG-10",name:"Jude Bellingham"},{id:"ENG-11",name:"Kobbie Mainoo"},{id:"ENG-12",name:"Conor Gallagher"},{id:"ENG-13",name:"Team Photo"},{id:"ENG-14",name:"Phil Foden"},{id:"ENG-15",name:"Bukayo Saka"},{id:"ENG-16",name:"Anthony Gordon"},{id:"ENG-17",name:"Cole Palmer"},{id:"ENG-18",name:"Marcus Rashford"},{id:"ENG-19",name:"Harry Kane"},{id:"ENG-20",name:"Ollie Watkins"}]},
+      CRO:{name:"Croacia",flag:"🇭🇷",group:"L",stickers:[{id:"CRO-1",name:"Emblem FOIL"},{id:"CRO-2",name:"Dominik Livakovic"},{id:"CRO-3",name:"Duje Caleta-Car"},{id:"CRO-4",name:"Josko Gvardiol"},{id:"CRO-5",name:"Josip Stanisic"},{id:"CRO-6",name:"Luka Vuskovic"},{id:"CRO-7",name:"Josip Sutalo"},{id:"CRO-8",name:"Kristijan Jakic"},{id:"CRO-9",name:"Luka Modric"},{id:"CRO-10",name:"Mateo Kovacic"},{id:"CRO-11",name:"Martin Baturina"},{id:"CRO-12",name:"Lovro Majer"},{id:"CRO-13",name:"Team Photo"},{id:"CRO-14",name:"Mario Pasalic"},{id:"CRO-15",name:"Petar Sucic"},{id:"CRO-16",name:"Ivan Perisic"},{id:"CRO-17",name:"Marco Pasalic"},{id:"CRO-18",name:"Ante Budimir"},{id:"CRO-19",name:"Andrej Kramaric"},{id:"CRO-20",name:"Franjo Ivanovic"}]},
+      GHA:{name:"Ghana",flag:"🇬🇭",group:"L",stickers:[{id:"GHA-1",name:"Emblem FOIL"},{id:"GHA-2",name:"Lawrence Ati-Zigi"},{id:"GHA-3",name:"Ibrahim Danlad"},{id:"GHA-4",name:"Tariq Lamptey"},{id:"GHA-5",name:"Alexander Djiku"},{id:"GHA-6",name:"Mohammed Salisu"},{id:"GHA-7",name:"Gideon Mensah"},{id:"GHA-8",name:"Abdul Rahman Baba"},{id:"GHA-9",name:"Denis Odoi"},{id:"GHA-10",name:"Thomas Partey"},{id:"GHA-11",name:"Baffour Asante"},{id:"GHA-12",name:"Antoine Semenyo"},{id:"GHA-13",name:"Team Photo"},{id:"GHA-14",name:"Joel Ideho"},{id:"GHA-15",name:"Salis Abdul Samed"},{id:"GHA-16",name:"Elisha Owusu"},{id:"GHA-17",name:"Jordan Ayew"},{id:"GHA-18",name:"Osman Bukari"},{id:"GHA-19",name:"Mohammed Kudus"},{id:"GHA-20",name:"Inaki Williams"}]},
+      PAN:{name:"Panama",flag:"🇵🇦",group:"L",stickers:[{id:"PAN-1",name:"Emblem FOIL"},{id:"PAN-2",name:"Orlando Mosquera"},{id:"PAN-3",name:"Luis Mejia"},{id:"PAN-4",name:"Fidel Escobar"},{id:"PAN-5",name:"Andres Andrade"},{id:"PAN-6",name:"Michael Amir Murillo"},{id:"PAN-7",name:"Eric Davis"},{id:"PAN-8",name:"Jose Cordoba"},{id:"PAN-9",name:"Cesar Blackman"},{id:"PAN-10",name:"Cristian Martinez"},{id:"PAN-11",name:"Anibal Godoy"},{id:"PAN-12",name:"Adalberto Carrasquilla"},{id:"PAN-13",name:"Team Photo"},{id:"PAN-14",name:"Edgar Barcenas"},{id:"PAN-15",name:"Carlos Harvey"},{id:"PAN-16",name:"Ismael Diaz"},{id:"PAN-17",name:"Jose Fajardo"},{id:"PAN-18",name:"Cecilio Waterman"},{id:"PAN-19",name:"Jose Luiz Rodriguez"},{id:"PAN-20",name:"Alberto Quintero"}]},
+      CC:{name:"Coca-Cola Especiales",flag:"🥤",group:null,stickers:[{id:"CC-1",name:"Lamine Yamal (Espana) FOIL"},{id:"CC-2",name:"Joshua Kimmich (Alemania) FOIL"},{id:"CC-3",name:"Harry Kane (Inglaterra) FOIL"},{id:"CC-4",name:"Santiago Gimenez (Mexico) FOIL"},{id:"CC-5",name:"Antonee Robinson (USA) FOIL"},{id:"CC-6",name:"Jefferson Lerma (Colombia) FOIL"},{id:"CC-7",name:"Edson Alvarez (Mexico) FOIL"},{id:"CC-8",name:"Virgil van Dijk (Paises Bajos) FOIL"},{id:"CC-9",name:"Alphonso Davies (Canada) FOIL"},{id:"CC-10",name:"Weston McKennie (USA) FOIL"},{id:"CC-11",name:"Lautaro Martinez (Argentina) FOIL"},{id:"CC-12",name:"Gabriel Magalhaes (Brasil) FOIL"}]},
+    };
+
+    const ORDER = ["INTRO","MEX","RSA","KOR","CZE","CAN","BIH","QAT","SUI","BRA","MAR","HAI","SCO","USA","PAR","AUS","TUR","GER","CUW","CIV","ECU","NED","JPN","SWE","TUN","BEL","EGY","IRN","NZL","ESP","CPV","KSA","URU","FRA","SEN","IRQ","NOR","ARG","ALG","AUT","JOR","POR","COD","UZB","COL","ENG","CRO","GHA","PAN","CC"];
+    const TOTAL = ORDER.reduce((s,c) => s + (DB[c]?.stickers?.length || 0), 0);
+    const ALL_IDS = ORDER.flatMap(c => DB[c]?.stickers?.map(s => s.id) || []);
+
+    function loadCol() {
+      const r = storage.get("pan26");
+      return r ? JSON.parse(r.value) : {o:{}, r:{}};
+    }
+    function saveCol(col) { storage.set("pan26", JSON.stringify(col)); }
+
+    function toB64(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(",")[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function callClaude(messages) {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 800, messages }),
+      });
+      const d = await resp.json();
+      return d.content?.[0]?.text || "";
+    }
+
+    const GC = {A:"#e74c3c",B:"#e67e22",C:"#f1c40f",D:"#2ecc71",E:"#1abc9c",F:"#3498db",G:"#9b59b6",H:"#e91e63",I:"#ff5722",J:"#00bcd4",K:"#8bc34a",L:"#ff9800"};
+
+    function Badge({group}) {
+      if (!group) return null;
+      return <span style={{background:GC[group]||"#555",color:"#fff",borderRadius:5,padding:"1px 6px",fontSize:10,fontWeight:800,marginLeft:4}}>G{group}</span>;
+    }
+
+    function Card({s, status, onToggle}) {
+      const owned = status === "owned", rep = status === "repeated";
+      return (
+        <div onClick={() => onToggle(s.id)} style={{background:owned?"rgba(62,207,142,.15)":rep?"rgba(245,200,66,.15)":"#111520",border:`1.5px solid ${owned?"#3ecf8e":rep?"#f5c842":"#252840"}`,borderRadius:8,padding:"6px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,userSelect:"none"}}>
+          <span style={{fontSize:13}}>{owned?"✅":rep?"🔁":"◻️"}</span>
+          <span style={{color:"#4a5270",fontFamily:"monospace",fontSize:10,minWidth:52}}>{s.id}</span>
+          <span style={{color:"#c8ccee",fontSize:11.5,flex:1}}>{s.name}</span>
+        </div>
+      );
+    }
+
+    function Country({code, data, col, filter, onToggle}) {
+      const [open, setOpen] = useState(false);
+      const stickers = data.stickers;
+      const owned = stickers.filter(s => col.o[s.id]).length;
+      const rep = stickers.filter(s => col.r[s.id]).length;
+      const pct = Math.round(owned / stickers.length * 100);
+      const shown = stickers.filter(s => {
+        if (filter === "missing") return !col.o[s.id] && !col.r[s.id];
+        if (filter === "owned") return col.o[s.id];
+        if (filter === "repeated") return col.r[s.id];
+        return true;
+      });
+      if (filter !== "all" && shown.length === 0) return null;
+      return (
+        <div style={{marginBottom:8,borderRadius:10,overflow:"hidden",border:"1px solid #252840",background:"#15182a"}}>
+          <div onClick={() => setOpen(v => !v)} style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:8,cursor:"pointer",background:"#1c1f35",userSelect:"none"}}>
+            <span style={{fontSize:20}}>{data.flag}</span>
+            <div style={{flex:1}}>
+              <div style={{display:"flex",alignItems:"center"}}>
+                <span style={{fontWeight:700,color:"#dde0ff",fontSize:13}}>{data.name}</span>
+                <Badge group={data.group} />
+              </div>
+              <div style={{fontSize:11,color:"#5a6080",marginTop:1}}>
+                <span style={{color:"#3ecf8e"}}>✅{owned}</span>
+                <span style={{marginLeft:8,color:"#5a6080"}}>◻️{stickers.length-owned}</span>
+                {rep > 0 && <span style={{marginLeft:8,color:"#f5c842"}}>🔁{rep}</span>}
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontSize:16,fontWeight:800,color:pct===100?"#3ecf8e":"#4d6ef5"}}>{pct}%</div>
+              <div style={{fontSize:10,color:"#5a6080"}}>{owned}/{stickers.length}</div>
+            </div>
+            <span style={{color:"#5a6080",marginLeft:4}}>{open?"▲":"▼"}</span>
+          </div>
+          {open && (
+            <div style={{padding:8,display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(195px,1fr))",gap:4}}>
+              {shown.map(s => <Card key={s.id} s={s} status={col.o[s.id]?"owned":col.r[s.id]?"repeated":"missing"} onToggle={onToggle} />)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function Scanner({onClose, onApply, col}) {
+      const [img, setImg] = useState(null);
+      const [preview, setPreview] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [result, setResult] = useState(null);
+      const [manual, setManual] = useState("");
+      const [mode, setMode] = useState("photo");
+      const ref = useRef();
+
+      const getInfo = (id) => {
+        for (const c of ORDER) {
+          const s = DB[c]?.stickers?.find(x => x.id === id);
+          if (s) return {...s, flag: DB[c].flag};
+        }
+        return null;
+      };
+
+      const analyze = async () => {
+        setLoading(true); setResult(null);
+        try {
+          let ids = [];
+          if (mode === "photo" && img) {
+            const b64 = await toB64(img);
+            const text = await callClaude([{role:"user",content:[
+              {type:"image",source:{type:"base64",media_type:img.type||"image/jpeg",data:b64}},
+              {type:"text",text:"Find all Panini FIFA World Cup 2026 sticker codes in this image. Codes look like MEX-1, ARG-17, FWC-9, CC-1, 00. Return ONLY a JSON array like [\"MEX-1\",\"ARG-17\"]. Nothing else."}
+            ]}]);
+            try { ids = JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { ids = []; }
+          } else {
+            ids = manual.split(/[\s,\n]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+          }
+          const valid = ids.filter(id => ALL_IDS.includes(id));
+          const invalid = ids.filter(id => !ALL_IDS.includes(id));
+          const toAdd = [], toRep = [];
+          for (const id of valid) { if (col.o[id]) toRep.push(id); else toAdd.push(id); }
+          setResult({valid, invalid, toAdd, toRepeat: toRep});
+        } catch(e) { setResult({error: e.message}); }
+        setLoading(false);
+      };
+
+      return (
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.92)",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#0d1020",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflow:"auto",padding:20,border:"1px solid #252840"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <h2 style={{margin:0,color:"#dde0ff",fontSize:16}}>🤖 Escaner IA</h2>
+              <button onClick={onClose} style={{background:"none",border:"none",color:"#5a6080",fontSize:20,cursor:"pointer"}}>✕</button>
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:12}}>
+              {["photo","manual"].map(m => (
+                <button key={m} onClick={() => setMode(m)} style={{flex:1,padding:9,borderRadius:8,background:mode===m?"#4d6ef5":"#1c1f35",color:mode===m?"#fff":"#5a6080",border:"none",cursor:"pointer",fontWeight:600,fontSize:12}}>
+                  {m==="photo"?"📷 Foto":"🔢 Manual"}
+                </button>
+              ))}
+            </div>
+            {mode==="photo" && (
+              <>
+                <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e => { if(e.target.files[0]){setPreview(URL.createObjectURL(e.target.files[0]));setImg(e.target.files[0]);setResult(null);}}} />
+                <div onClick={() => ref.current.click()} style={{border:"2px dashed #252840",borderRadius:10,padding:20,textAlign:"center",cursor:"pointer",marginBottom:10,background:"#15182a"}}>
+                  {preview ? <img src={preview} alt="" style={{maxWidth:"100%",borderRadius:6,maxHeight:150,objectFit:"contain"}} /> : <div><div style={{fontSize:28}}>📷</div><div style={{color:"#5a6080",fontSize:12,marginTop:4}}>Toca para subir foto</div></div>}
+                </div>
+              </>
+            )}
+            {mode==="manual" && (
+              <textarea value={manual} onChange={e=>setManual(e.target.value)} placeholder={"MEX-1, ARG-17, FWC-9\nUno por linea o separados por coma"} style={{width:"100%",minHeight:80,borderRadius:8,border:"1px solid #252840",background:"#15182a",color:"#dde0ff",padding:10,fontSize:12,resize:"vertical",boxSizing:"border-box",marginBottom:10}} />
+            )}
+            <button onClick={analyze} disabled={loading||(mode==="photo"&&!img)||(mode==="manual"&&!manual.trim())} style={{width:"100%",padding:11,borderRadius:10,border:"none",background:"#4d6ef5",color:"#fff",fontWeight:800,fontSize:14,cursor:loading?"wait":"pointer",opacity:loading?0.7:1,marginBottom:12}}>
+              {loading?"🔍 Analizando...":"🔍 Analizar"}
+            </button>
+            {result && !result.error && (
+              <div>
+                <div style={{display:"flex",gap:12,fontSize:12,marginBottom:8,padding:10,background:"#15182a",borderRadius:8}}>
+                  <span style={{color:"#3ecf8e"}}>✅ Nuevos: {result.toAdd.length}</span>
+                  <span style={{color:"#f5c842"}}>🔁 Repetidos: {result.toRepeat.length}</span>
+                  {result.invalid.length>0 && <span style={{color:"#5a6080"}}>❓ No reconocidos: {result.invalid.length}</span>}
+                </div>
+                {result.toAdd.length>0 && (
+                  <div style={{marginBottom:8}}>
+                    <div style={{color:"#3ecf8e",fontWeight:700,fontSize:11,marginBottom:4}}>Nuevos a registrar:</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {result.toAdd.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(62,207,142,.12)",border:"1px solid #3ecf8e",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#dde0ff"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                    </div>
+                  </div>
+                )}
+                {result.toRepeat.length>0 && (
+                  <div style={{marginBottom:8}}>
+                    <div style={{color:"#f5c842",fontWeight:700,fontSize:11,marginBottom:4}}>Repetidos:</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {result.toRepeat.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(245,200,66,.12)",border:"1px solid #f5c842",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#dde0ff"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                    </div>
+                  </div>
+                )}
+                <div style={{fontWeight:700,color:"#dde0ff",marginBottom:8,fontSize:13}}>Confirmas que los datos son correctos?</div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={onClose} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #252840",background:"#1c1f35",color:"#5a6080",cursor:"pointer",fontWeight:600}}>Cancelar</button>
+                  <button onClick={() => onApply(result.toAdd, result.toRepeat)} style={{flex:2,padding:10,borderRadius:8,border:"none",background:"#3ecf8e",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:14}}>✅ Si, registrar</button>
+                </div>
+              </div>
+            )}
+            {result?.error && <div style={{color:"#ff6b6b",background:"rgba(255,107,107,.1)",borderRadius:8,padding:10,fontSize:12}}>Error: {result.error}</div>}
+          </div>
+        </div>
+      );
+    }
+
+    function App() {
+      const [col, setCol] = useState(() => loadCol());
+      const [filter, setFilter] = useState("all");
+      const [search, setSearch] = useState("");
+      const [showAI, setShowAI] = useState(false);
+      const [toast, setToast] = useState(null);
+      const [grp, setGrp] = useState("all");
+
+      const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
+
+      const toggle = useCallback((id) => {
+        setCol(prev => {
+          const next = {o:{...prev.o}, r:{...prev.r}};
+          if (next.o[id]) { delete next.o[id]; next.r[id]=true; showToast("🔁 Repetido","warn"); }
+          else if (next.r[id]) { delete next.r[id]; showToast("❌ Quitado","err"); }
+          else { next.o[id]=true; showToast("✅ Registrado!"); }
+          saveCol(next);
+          return next;
+        });
+      }, []);
+
+      const applyAI = useCallback((toAdd, toRepeat) => {
+        setCol(prev => {
+          const next = {o:{...prev.o}, r:{...prev.r}};
+          for (const id of toAdd) next.o[id]=true;
+          for (const id of toRepeat) { delete next.o[id]; next.r[id]=true; }
+          saveCol(next);
+          return next;
+        });
+        showToast(`✅ ${toAdd.length} nuevos + ${toRepeat.length} repetidos`);
+        setShowAI(false);
+      }, []);
+
+      const totalOwned = Object.keys(col.o).length;
+      const totalRep = Object.keys(col.r).length;
+      const pct = Math.round(totalOwned / TOTAL * 100);
+
+      const visible = ORDER.filter(code => {
+        const d = DB[code];
+        if (!d) return false;
+        if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (grp !== "all" && d.group !== grp) return false;
+        return true;
+      });
+
+      return (
+        <div style={{fontFamily:"system-ui,sans-serif",background:"#0d1020",minHeight:"100vh"}}>
+          <div style={{background:"#111425",borderBottom:"1px solid #252840",padding:"14px 14px 0",position:"sticky",top:0,zIndex:50}}>
+            <div style={{maxWidth:860,margin:"0 auto"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                <span style={{fontSize:26}}>⚽</span>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:900,color:"#dde0ff",fontSize:16}}>Panini WC 2026</div>
+                  <div style={{color:"#5a6080",fontSize:11}}>Mi coleccion · {TOTAL} cromos</div>
+                </div>
+                <button onClick={() => setShowAI(true)} style={{padding:"8px 14px",borderRadius:8,border:"none",background:"#4d6ef5",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>🤖 IA</button>
+              </div>
+              <div style={{background:"#1c1f35",borderRadius:4,height:6,marginBottom:7,overflow:"hidden"}}>
+                <div style={{height:"100%",background:"linear-gradient(90deg,#4d6ef5,#3ecf8e)",width:`${pct}%`,transition:"width .4s"}} />
+              </div>
+              <div style={{display:"flex",gap:12,fontSize:11,marginBottom:8}}>
+                <span style={{color:"#3ecf8e",fontWeight:700}}>✅ {totalOwned}</span>
+                <span style={{color:"#5a6080"}}>◻️ {TOTAL-totalOwned} faltan</span>
+                <span style={{color:"#f5c842"}}>🔁 {totalRep}</span>
+                <span style={{marginLeft:"auto",color:"#4d6ef5",fontWeight:800,fontSize:14}}>{pct}%</span>
+              </div>
+              <div style={{display:"flex",gap:2,overflowX:"auto"}}>
+                {[{k:"all",l:"Todos"},{k:"owned",l:"✅ Tengo"},{k:"missing",l:"◻️ Faltan"},{k:"repeated",l:"🔁 Repetidos"}].map(f => (
+                  <button key={f.k} onClick={() => setFilter(f.k)} style={{padding:"7px 12px",border:"none",borderRadius:"7px 7px 0 0",whiteSpace:"nowrap",background:filter===f.k?"#15182a":"transparent",color:filter===f.k?"#dde0ff":"#5a6080",cursor:"pointer",fontWeight:filter===f.k?700:400,fontSize:11,borderBottom:filter===f.k?"2px solid #4d6ef5":"2px solid transparent"}}>
+                    {f.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{maxWidth:860,margin:"0 auto",padding:12}}>
+            <div style={{display:"flex",gap:8,marginBottom:10}}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Buscar pais..." style={{flex:1,padding:"8px 12px",borderRadius:8,border:"1px solid #252840",background:"#15182a",color:"#dde0ff",fontSize:12}} />
+              <select value={grp} onChange={e=>setGrp(e.target.value)} style={{padding:"8px 10px",borderRadius:8,border:"1px solid #252840",background:"#15182a",color:"#dde0ff",fontSize:12,cursor:"pointer"}}>
+                {["all","A","B","C","D","E","F","G","H","I","J","K","L"].map(g => <option key={g} value={g}>{g==="all"?"Todos los grupos":`Grupo ${g}`}</option>)}
+              </select>
+            </div>
+            <div style={{fontSize:10.5,color:"#5a6080",marginBottom:8}}>💡 1 clic = ✅ tengo · 2 clics = 🔁 repetido · 3 clics = quitar</div>
+            {visible.map(code => <Country key={code} code={code} data={DB[code]} col={col} filter={filter} onToggle={toggle} />)}
+          </div>
+
+          {showAI && <Scanner onClose={() => setShowAI(false)} onApply={applyAI} col={col} />}
+
+          {toast && (
+            <div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:toast.type==="ok"?"#3ecf8e":toast.type==="warn"?"#b8920a":"#c0392b",color:"#fff",padding:"9px 20px",borderRadius:40,fontWeight:700,fontSize:12,zIndex:200,whiteSpace:"nowrap"}}>
+              {toast.msg}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
