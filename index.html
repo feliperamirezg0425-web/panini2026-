@@ -109,14 +109,17 @@
       });
     }
 
-    const API_KEY = "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";
+    function getApiKey() { return localStorage.getItem("pan26_apikey") || ""; }
+    function saveApiKey(k) { localStorage.setItem("pan26_apikey", k.trim()); }
 
     async function callClaude(messages) {
+      const key = getApiKey();
+      if (!key) throw new Error("No hay API key configurada.");
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": API_KEY,
+          "x-api-key": key,
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -195,6 +198,8 @@
       const [result, setResult] = useState(null);
       const [manual, setManual] = useState("");
       const [mode, setMode] = useState("photo");
+      const [keyInput, setKeyInput] = useState("");
+      const [showKeySetup, setShowKeySetup] = useState(() => !getApiKey());
       const ref = useRef();
 
       const getInfo = (id) => {
@@ -233,8 +238,36 @@
           <div style={{background:"#0d1020",borderRadius:16,width:"100%",maxWidth:520,maxHeight:"90vh",overflow:"auto",padding:20,border:"1px solid #252840"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <h2 style={{margin:0,color:"#dde0ff",fontSize:16}}>🤖 Escaner IA</h2>
-              <button onClick={onClose} style={{background:"none",border:"none",color:"#5a6080",fontSize:20,cursor:"pointer"}}>✕</button>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                {!showKeySetup && <button onClick={() => setShowKeySetup(true)} title="Cambiar API key" style={{background:"none",border:"none",color:"#5a6080",fontSize:16,cursor:"pointer"}}>🔑</button>}
+                <button onClick={onClose} style={{background:"none",border:"none",color:"#5a6080",fontSize:20,cursor:"pointer"}}>✕</button>
+              </div>
             </div>
+
+            {showKeySetup ? (
+              <div>
+                <div style={{color:"#5a6080",fontSize:12,marginBottom:12,lineHeight:1.5}}>
+                  Para usar el escaner IA necesitas una API key de Anthropic. Se guarda solo en tu dispositivo y nunca se sube a ningun servidor.<br/><br/>
+                  Consiguela en <a href="https://console.anthropic.com/keys" target="_blank" style={{color:"#4d6ef5"}}>console.anthropic.com/keys</a>
+                </div>
+                <input
+                  value={keyInput}
+                  onChange={e => setKeyInput(e.target.value)}
+                  placeholder="sk-ant-api03-..."
+                  type="password"
+                  style={{width:"100%",padding:"10px 12px",borderRadius:8,border:"1px solid #252840",background:"#15182a",color:"#dde0ff",fontSize:12,boxSizing:"border-box",marginBottom:10}}
+                />
+                <div style={{display:"flex",gap:8}}>
+                  {getApiKey() && <button onClick={() => setShowKeySetup(false)} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #252840",background:"#1c1f35",color:"#5a6080",cursor:"pointer",fontWeight:600}}>Cancelar</button>}
+                  <button
+                    onClick={() => { if(keyInput.trim().startsWith("sk-ant-")) { saveApiKey(keyInput); setShowKeySetup(false); } }}
+                    disabled={!keyInput.trim().startsWith("sk-ant-")}
+                    style={{flex:2,padding:10,borderRadius:8,border:"none",background:"#4d6ef5",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:13,opacity:keyInput.trim().startsWith("sk-ant-")?1:0.5}}
+                  >Guardar key</button>
+                </div>
+              </div>
+            ) : (
+              <>
             <div style={{display:"flex",gap:8,marginBottom:12}}>
               {["photo","manual"].map(m => (
                 <button key={m} onClick={() => setMode(m)} style={{flex:1,padding:9,borderRadius:8,background:mode===m?"#4d6ef5":"#1c1f35",color:mode===m?"#fff":"#5a6080",border:"none",cursor:"pointer",fontWeight:600,fontSize:12}}>
@@ -287,6 +320,8 @@
               </div>
             )}
             {result?.error && <div style={{color:"#ff6b6b",background:"rgba(255,107,107,.1)",borderRadius:8,padding:10,fontSize:12}}>Error: {result.error}</div>}
+            </>
+            )}
           </div>
         </div>
       );
