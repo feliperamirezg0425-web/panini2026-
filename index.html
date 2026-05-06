@@ -114,7 +114,7 @@
 
     async function callClaude(messages) {
       const key = getApiKey();
-      if (!key) throw new Error("No hay API key configurada.");
+      if (!key) throw new Error("No hay API key. Toca 🔑 para configurarla.");
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -123,11 +123,19 @@
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 800, messages }),
+        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, messages }),
       });
-      const d = await resp.json();
-      if (d.error) throw new Error(d.error.message || "API error");
-      return d.content?.[0]?.text || "";
+      let d;
+      try { d = await resp.json(); } catch { throw new Error("Error de red. Verifica tu conexion."); }
+      if (!resp.ok) {
+        const msg = d?.error?.message || "";
+        if (resp.status === 401) throw new Error("API key invalida o revocada. Toca 🔑 para actualizarla.");
+        if (resp.status === 429) throw new Error("Limite de uso alcanzado. Intenta en un momento.");
+        throw new Error(msg || "Error " + resp.status);
+      }
+      const text = d.content?.[0]?.text;
+      if (!text) throw new Error("Respuesta vacia de la API.");
+      return text;
     }
 
     const GC = {A:"#e74c3c",B:"#e67e22",C:"#f1c40f",D:"#2ecc71",E:"#1abc9c",F:"#3498db",G:"#9b59b6",H:"#e91e63",I:"#ff5722",J:"#00bcd4",K:"#8bc34a",L:"#ff9800"};
@@ -210,25 +218,81 @@
         return null;
       };
 
+      const PROMPT_STICKER = `You are reading the BACK of a loose Panini FIFA World Cup 2026 sticker.
+The sticker code appears in the TOP RIGHT corner of the back, in a dark rounded rectangle.
+Format examples: "SCO 11", "FWC 19", "MEX 7", "COL 3", "CC 4", "00"
+IMPORTANT: In the app, codes use a dash instead of space: SCO-11, FWC-19, MEX-7, COL-3, CC-4, 00.
+Read the code carefully and return ONLY a JSON array with that single code, converted to dash format.
+Example: if you see "SCO 11" return ["SCO-11"]
+If you see "00" return ["00"]
+Return ONLY the JSON array, nothing else.`;
+
+      const PROMPT_ALBUM = `You are analyzing a photo of a Panini FIFA World Cup 2026 sticker album page. The photo may be rotated or show two pages side by side — analyze it regardless of orientation.
+
+HOW THIS ALBUM WORKS:
+- Each sticker slot shows a country code + number printed inside it, e.g. "COL 7", "MEX 3", "FWC 2", "COL 13".
+- The code is printed in WHITE TEXT on the ORANGE/COLORED background of the empty slot.
+- The number appears LARGE in the slot, and the country code appears smaller above or near it.
+
+YOUR JOB — classify every slot you can see:
+
+MISSING (empty slot): The slot is empty and you can READ the code printed inside it.
+→ Add to "missing" list.
+
+OWNED (sticker glued): A player photo/image is covering the slot. You CANNOT see the code because it is hidden under the sticker.
+→ Deduce the code from: the player name printed on the sticker, OR the sequential numbering of surrounding slots.
+→ Add to "owned" list.
+
+RULES:
+- Codes format in output: use dash, e.g. COL-7, MEX-3, FWC-2, COL-13
+- Country codes are 2-3 letters: COL, MEX, ARG, BRA, FRA, ESP, GER, ENG, POR, URU, CAN, USA, SCO, etc.
+- Numbers go from 1 to 20 per country (plus COL-1 is the emblem FOIL sticker)
+- Special intro stickers: FWC-1 through FWC-19, and "00" for the Panini logo
+- Coca-Cola specials: CC-1 through CC-12
+- Be thorough — scan the ENTIRE image including edges and corners
+- If the photo shows two pages, analyze BOTH pages
+
+Return ONLY a valid JSON object, nothing else:
+{"owned": ["COL-4","COL-8","COL-10"], "missing": ["COL-2","COL-3","COL-5","COL-6","COL-7","COL-9"]}`;
+
       const analyze = async () => {
         setLoading(true); setResult(null);
         try {
           let ids = [];
-          if (mode === "photo" && img) {
+          if ((mode === "photo" || mode === "album") && img) {
             const b64 = await toB64(img);
+            const prompt = mode === "album" ? PROMPT_ALBUM : PROMPT_STICKER;
             const text = await callClaude([{role:"user",content:[
               {type:"image",source:{type:"base64",media_type:img.type||"image/jpeg",data:b64}},
-              {type:"text",text:"Find all Panini FIFA World Cup 2026 sticker codes in this image. Codes look like MEX-1, ARG-17, FWC-9, CC-1, 00. Return ONLY a JSON array like [\"MEX-1\",\"ARG-17\"]. Nothing else."}
+              {type:"text",text:prompt}
             ]}]);
-            try { ids = JSON.parse(text.replace(/```json|```/g,"").trim()); } catch { ids = []; }
-          } else {
+            const clean = text.replace(/```json|```/g,"").trim();
+
+            if (mode === "album") {
+              let parsed = {owned:[], missing:[]};
+              try { parsed = JSON.parse(clean); } catch {}
+              const ownedValid = (parsed.owned||[]).map(id=>id.toUpperCase()).filter(id=>ALL_IDS.includes(id));
+              const missingValid = (parsed.missing||[]).map(id=>id.toUpperCase()).filter(id=>ALL_IDS.includes(id));
+              // Mark owned stickers as "new" if not already in collection, or "already had" if they were
+              const toAdd = ownedValid.filter(id => !col.o[id]);
+              const alreadyHad = ownedValid.filter(id => col.o[id]);
+              setResult({mode:"album", ownedValid, missingValid, toAdd, alreadyHad, toRepeat:[]});
+              setLoading(false); return;
+            } else {
+              try { ids = JSON.parse(clean); } catch {
+                // Claude returned text instead of JSON — try to extract codes manually
+                const matches = clean.match(/[A-Z]{2,3}-\d{1,2}|00/g);
+                ids = matches || [];
+              }
+            }
+          } else if (mode === "manual") {
             ids = manual.split(/[\s,\n]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
           }
-          const valid = ids.filter(id => ALL_IDS.includes(id));
-          const invalid = ids.filter(id => !ALL_IDS.includes(id));
+          const valid = ids.map(id=>id.toUpperCase()).filter(id => ALL_IDS.includes(id));
+          const invalid = ids.filter(id => !ALL_IDS.includes(id.toUpperCase()));
           const toAdd = [], toRep = [];
           for (const id of valid) { if (col.o[id]) toRep.push(id); else toAdd.push(id); }
-          setResult({valid, invalid, toAdd, toRepeat: toRep});
+          setResult({mode:"sticker", valid, invalid, toAdd, toRepeat: toRep});
         } catch(e) { setResult({error: e.message}); }
         setLoading(false);
       };
@@ -268,55 +332,105 @@
               </div>
             ) : (
               <>
-            <div style={{display:"flex",gap:8,marginBottom:12}}>
-              {["photo","manual"].map(m => (
-                <button key={m} onClick={() => setMode(m)} style={{flex:1,padding:9,borderRadius:8,background:mode===m?"#4d6ef5":"#1c1f35",color:mode===m?"#fff":"#5a6080",border:"none",cursor:"pointer",fontWeight:600,fontSize:12}}>
-                  {m==="photo"?"📷 Foto":"🔢 Manual"}
+            <div style={{display:"flex",gap:6,marginBottom:12}}>
+              {[["photo","📷 Figurita"],["album","📖 Página"],["manual","🔢 Manual"]].map(([m,label]) => (
+                <button key={m} onClick={() => {setMode(m);setResult(null);setImg(null);setPreview(null);}} style={{flex:1,padding:8,borderRadius:8,background:mode===m?"#4d6ef5":"#1c1f35",color:mode===m?"#fff":"#5a6080",border:"none",cursor:"pointer",fontWeight:600,fontSize:11}}>
+                  {label}
                 </button>
               ))}
             </div>
-            {mode==="photo" && (
+            {mode==="photo" && <div style={{color:"#5a6080",fontSize:11,marginBottom:8}}>Foto del <b style={{color:"#dde0ff"}}>reverso</b> de la figurita suelta. El código está arriba a la derecha.</div>}
+            {mode==="album" && <div style={{color:"#5a6080",fontSize:11,marginBottom:8}}>Foto de una <b style={{color:"#dde0ff"}}>página del álbum</b>. Detecta qué está pegado y qué falta.</div>}
+            {(mode==="photo"||mode==="album") && (
               <>
-                <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e => { if(e.target.files[0]){setPreview(URL.createObjectURL(e.target.files[0]));setImg(e.target.files[0]);setResult(null);}}} />
-                <div onClick={() => ref.current.click()} style={{border:"2px dashed #252840",borderRadius:10,padding:20,textAlign:"center",cursor:"pointer",marginBottom:10,background:"#15182a"}}>
-                  {preview ? <img src={preview} alt="" style={{maxWidth:"100%",borderRadius:6,maxHeight:150,objectFit:"contain"}} /> : <div><div style={{fontSize:28}}>📷</div><div style={{color:"#5a6080",fontSize:12,marginTop:4}}>Toca para subir foto</div></div>}
-                </div>
+                <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e => { if(e.target.files[0]){setPreview(URL.createObjectURL(e.target.files[0]));setImg(e.target.files[0]);setResult(null); e.target.value="";}}} />
+                {preview ? (
+                  <div style={{position:"relative",marginBottom:10}}>
+                    <img src={preview} alt="" style={{width:"100%",borderRadius:8,maxHeight:180,objectFit:"contain",background:"#15182a"}} />
+                    <button onClick={() => {setPreview(null);setImg(null);setResult(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.7)",border:"none",color:"#fff",borderRadius:20,width:26,height:26,cursor:"pointer",fontSize:14}}>✕</button>
+                  </div>
+                ) : (
+                  <button onClick={() => ref.current.click()} style={{width:"100%",padding:20,borderRadius:10,border:"2px dashed #252840",background:"#15182a",color:"#dde0ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>
+                    🖼️ Seleccionar foto
+                  </button>
+                )}
               </>
             )}
             {mode==="manual" && (
               <textarea value={manual} onChange={e=>setManual(e.target.value)} placeholder={"MEX-1, ARG-17, FWC-9\nUno por linea o separados por coma"} style={{width:"100%",minHeight:80,borderRadius:8,border:"1px solid #252840",background:"#15182a",color:"#dde0ff",padding:10,fontSize:12,resize:"vertical",boxSizing:"border-box",marginBottom:10}} />
             )}
-            <button onClick={analyze} disabled={loading||(mode==="photo"&&!img)||(mode==="manual"&&!manual.trim())} style={{width:"100%",padding:11,borderRadius:10,border:"none",background:"#4d6ef5",color:"#fff",fontWeight:800,fontSize:14,cursor:loading?"wait":"pointer",opacity:loading?0.7:1,marginBottom:12}}>
+            <button onClick={analyze} disabled={loading||((mode==="photo"||mode==="album")&&!img)||(mode==="manual"&&!manual.trim())} style={{width:"100%",padding:11,borderRadius:10,border:"none",background:"#4d6ef5",color:"#fff",fontWeight:800,fontSize:14,cursor:loading?"wait":"pointer",opacity:loading?0.7:1,marginBottom:12}}>
               {loading?"🔍 Analizando...":"🔍 Analizar"}
             </button>
-            {result && !result.error && (
+            {result && !result.error && result.mode==="sticker" && (
               <div>
                 <div style={{display:"flex",gap:12,fontSize:12,marginBottom:8,padding:10,background:"#15182a",borderRadius:8}}>
-                  <span style={{color:"#3ecf8e"}}>✅ Nuevos: {result.toAdd.length}</span>
-                  <span style={{color:"#f5c842"}}>🔁 Repetidos: {result.toRepeat.length}</span>
-                  {result.invalid.length>0 && <span style={{color:"#5a6080"}}>❓ No reconocidos: {result.invalid.length}</span>}
+                  <span style={{color:"#3ecf8e"}}>✅ Nueva: {result.toAdd.length}</span>
+                  <span style={{color:"#f5c842"}}>🔁 Repetida: {result.toRepeat.length}</span>
+                  {result.invalid.length>0 && <span style={{color:"#5a6080"}}>❓ No reconocida: {result.invalid.length}</span>}
                 </div>
                 {result.toAdd.length>0 && (
                   <div style={{marginBottom:8}}>
-                    <div style={{color:"#3ecf8e",fontWeight:700,fontSize:11,marginBottom:4}}>Nuevos a registrar:</div>
+                    <div style={{color:"#3ecf8e",fontWeight:700,fontSize:11,marginBottom:4}}>Nueva — la necesitas:</div>
                     <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {result.toAdd.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(62,207,142,.12)",border:"1px solid #3ecf8e",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#dde0ff"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                      {result.toAdd.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(62,207,142,.12)",border:"1px solid #3ecf8e",borderRadius:6,padding:"4px 10px",fontSize:12,color:"#dde0ff",fontWeight:700}}>{i?`${i.flag} ${id}`:id}</span>; })}
                     </div>
                   </div>
                 )}
                 {result.toRepeat.length>0 && (
                   <div style={{marginBottom:8}}>
-                    <div style={{color:"#f5c842",fontWeight:700,fontSize:11,marginBottom:4}}>Repetidos:</div>
+                    <div style={{color:"#f5c842",fontWeight:700,fontSize:11,marginBottom:4}}>Repetida — ya la tienes:</div>
                     <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
-                      {result.toRepeat.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(245,200,66,.12)",border:"1px solid #f5c842",borderRadius:6,padding:"2px 8px",fontSize:11,color:"#dde0ff"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                      {result.toRepeat.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(245,200,66,.12)",border:"1px solid #f5c842",borderRadius:6,padding:"4px 10px",fontSize:12,color:"#dde0ff",fontWeight:700}}>{i?`${i.flag} ${id}`:id}</span>; })}
                     </div>
                   </div>
                 )}
-                <div style={{fontWeight:700,color:"#dde0ff",marginBottom:8,fontSize:13}}>Confirmas que los datos son correctos?</div>
+                <div style={{fontWeight:700,color:"#dde0ff",marginBottom:8,fontSize:13}}>Confirmas?</div>
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={onClose} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #252840",background:"#1c1f35",color:"#5a6080",cursor:"pointer",fontWeight:600}}>Cancelar</button>
-                  <button onClick={() => onApply(result.toAdd, result.toRepeat)} style={{flex:2,padding:10,borderRadius:8,border:"none",background:"#3ecf8e",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:14}}>✅ Si, registrar</button>
+                  <button onClick={() => onApply(result.toAdd, result.toRepeat)} style={{flex:2,padding:10,borderRadius:8,border:"none",background:"#3ecf8e",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:14}}>✅ Registrar</button>
                 </div>
+              </div>
+            )}
+            {result && !result.error && result.mode==="album" && (
+              <div>
+                <div style={{display:"flex",gap:12,fontSize:12,marginBottom:8,padding:10,background:"#15182a",borderRadius:8,flexWrap:"wrap"}}>
+                  <span style={{color:"#3ecf8e"}}>✅ Pegadas: {result.ownedValid.length}</span>
+                  <span style={{color:"#ff6b6b"}}>◻️ Faltan: {result.missingValid.length}</span>
+                  {result.toAdd.length>0 && <span style={{color:"#4d6ef5"}}>🆕 A registrar: {result.toAdd.length}</span>}
+                </div>
+                {result.missingValid.length>0 && (
+                  <div style={{marginBottom:10}}>
+                    <div style={{color:"#ff6b6b",fontWeight:700,fontSize:11,marginBottom:4}}>◻️ Faltan en esta página:</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {result.missingValid.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(255,107,107,.1)",border:"1px solid #ff6b6b",borderRadius:6,padding:"3px 8px",fontSize:11,color:"#dde0ff"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                    </div>
+                  </div>
+                )}
+                {result.toAdd.length>0 && (
+                  <div style={{marginBottom:10}}>
+                    <div style={{color:"#3ecf8e",fontWeight:700,fontSize:11,marginBottom:4}}>🆕 Pegadas que no tenías registradas — se agregarán:</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {result.toAdd.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(62,207,142,.12)",border:"1px solid #3ecf8e",borderRadius:6,padding:"3px 8px",fontSize:11,color:"#dde0ff"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                    </div>
+                  </div>
+                )}
+                {result.alreadyHad.length>0 && (
+                  <div style={{marginBottom:10}}>
+                    <div style={{color:"#5a6080",fontWeight:700,fontSize:11,marginBottom:4}}>✅ Ya estaban registradas:</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                      {result.alreadyHad.map(id => { const i=getInfo(id); return <span key={id} style={{background:"rgba(90,96,128,.1)",border:"1px solid #252840",borderRadius:6,padding:"3px 8px",fontSize:11,color:"#5a6080"}}>{i?`${i.flag} ${id}`:id}</span>; })}
+                    </div>
+                  </div>
+                )}
+                {result.toAdd.length>0 ? (
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={onClose} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #252840",background:"#1c1f35",color:"#5a6080",cursor:"pointer",fontWeight:600}}>Cancelar</button>
+                    <button onClick={() => onApply(result.toAdd, [])} style={{flex:2,padding:10,borderRadius:8,border:"none",background:"#3ecf8e",color:"#fff",cursor:"pointer",fontWeight:800,fontSize:14}}>✅ Registrar pegadas</button>
+                  </div>
+                ) : (
+                  <button onClick={onClose} style={{width:"100%",padding:10,borderRadius:8,border:"none",background:"#1c1f35",color:"#dde0ff",cursor:"pointer",fontWeight:700}}>Cerrar</button>
+                )}
               </div>
             )}
             {result?.error && <div style={{color:"#ff6b6b",background:"rgba(255,107,107,.1)",borderRadius:8,padding:10,fontSize:12}}>Error: {result.error}</div>}
