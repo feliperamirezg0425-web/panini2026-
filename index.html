@@ -24,16 +24,6 @@
   <script type="text/babel">
     const { useState, useEffect, useRef, useCallback } = React;
 
-    // ── STORAGE (localStorage for GitHub Pages) ──────────────────────────────
-    const storage = {
-      get: (key) => {
-        try { const v = localStorage.getItem(key); return v ? { value: v } : null; } catch { return null; }
-      },
-      set: (key, value) => {
-        try { localStorage.setItem(key, value); return true; } catch { return null; }
-      }
-    };
-
     // ── DATABASE ─────────────────────────────────────────────────────────────
     const DB = {
       INTRO: { name: "Introduccion", flag: "🌍", group: null, stickers: [
@@ -95,10 +85,20 @@
     const ALL_IDS = ORDER.flatMap(c => DB[c]?.stickers?.map(s => s.id) || []);
 
     function loadCol() {
-      const r = storage.get("pan26");
-      return r ? JSON.parse(r.value) : {o:{}, r:{}};
+      try {
+        const v = localStorage.getItem("pan26");
+        return v ? JSON.parse(v) : {o:{}, r:{}};
+      } catch {
+        return {o:{}, r:{}};
+      }
     }
-    function saveCol(col) { storage.set("pan26", JSON.stringify(col)); }
+    function saveCol(col) {
+      try {
+        localStorage.setItem("pan26", JSON.stringify(col));
+      } catch(e) {
+        console.error("Save error:", e);
+      }
+    }
 
     function toB64(file) {
       return new Promise((res, rej) => {
