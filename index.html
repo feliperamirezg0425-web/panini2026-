@@ -123,7 +123,7 @@
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1500, messages }),
+        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1500, messages }),
       });
       let d;
       try { d = await resp.json(); } catch { throw new Error("Error de red. Verifica tu conexion."); }
@@ -255,32 +255,66 @@ RULES:
 Return ONLY a valid JSON object, nothing else:
 {"owned": ["COL-4","COL-8","COL-10"], "missing": ["COL-2","COL-3","COL-5","COL-6","COL-7","COL-9"]}`;
 
+      const parseAlbumJSON = (text) => {
+        const clean = text.replace(/```json|```/g,"").trim();
+        try { return JSON.parse(clean); } catch {}
+        const m = clean.indexOf('{"owned"');
+        if (m !== -1) {
+          const sub = clean.slice(m);
+          const end2 = sub.lastIndexOf('}') + 1;
+          try { return JSON.parse(sub.slice(0, end2)); } catch {}
+        }
+        const owned = [], missing = [];
+        const lines = clean.split("\n");
+        let cur = missing;
+        for (const line of lines) {
+          if (/owned|pegad|glued/i.test(line)) cur = owned;
+          else if (/missing|falt|empty/i.test(line)) cur = missing;
+          const codes = line.match(/[A-Z]{2,3}-[0-9]{1,2}/g) || [];
+          codes.forEach(c => cur.push(c));
+        }
+        if (owned.length + missing.length > 0) return {owned, missing};
+        const all = (clean.match(/[A-Z]{2,3}-[0-9]{1,2}/g) || []).map(c => c.toUpperCase());
+        return {owned: [], missing: all};
+      };
+
       const analyze = async () => {
         setLoading(true); setResult(null);
         try {
           let ids = [];
           if ((mode === "photo" || mode === "album") && img) {
             const b64 = await toB64(img);
-            const prompt = mode === "album" ? PROMPT_ALBUM : PROMPT_STICKER;
-            const text = await callClaude([{role:"user",content:[
-              {type:"image",source:{type:"base64",media_type:img.type||"image/jpeg",data:b64}},
-              {type:"text",text:prompt}
-            ]}]);
-            const clean = text.replace(/```json|```/g,"").trim();
+            const imgContent = {type:"image",source:{type:"base64",media_type:img.type||"image/jpeg",data:b64}};
 
             if (mode === "album") {
-              let parsed = {owned:[], missing:[]};
-              try { parsed = JSON.parse(clean); } catch {}
+              // First attempt
+              let text = await callClaude([{role:"user",content:[imgContent,{type:"text",text:PROMPT_ALBUM}]}]);
+              let parsed = parseAlbumJSON(text);
+
+              // If result is empty, retry with a simpler more direct prompt
+              if ((parsed.owned||[]).length === 0 && (parsed.missing||[]).length === 0) {
+                const RETRY_PROMPT = `Look at this Panini FIFA World Cup 2026 album photo carefully.
+List ALL sticker slots you can see. For each slot:
+- If it shows a PLAYER PHOTO glued in = owned
+- If it shows an EMPTY space with a code like "SEN 7" printed on it = missing
+
+The country code + number are printed in white text inside each empty slot (e.g. SEN 3, IRN 12, MEX 7).
+
+Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","SEN-5"]}`;
+                text = await callClaude([{role:"user",content:[imgContent,{type:"text",text:RETRY_PROMPT}]}]);
+                parsed = parseAlbumJSON(text);
+              }
+
               const ownedValid = (parsed.owned||[]).map(id=>id.toUpperCase()).filter(id=>ALL_IDS.includes(id));
               const missingValid = (parsed.missing||[]).map(id=>id.toUpperCase()).filter(id=>ALL_IDS.includes(id));
-              // Mark owned stickers as "new" if not already in collection, or "already had" if they were
               const toAdd = ownedValid.filter(id => !col.o[id]);
               const alreadyHad = ownedValid.filter(id => col.o[id]);
               setResult({mode:"album", ownedValid, missingValid, toAdd, alreadyHad, toRepeat:[]});
               setLoading(false); return;
             } else {
+              const text = await callClaude([{role:"user",content:[imgContent,{type:"text",text:PROMPT_STICKER}]}]);
+              const clean = text.replace(/```json|```/g,"").trim();
               try { ids = JSON.parse(clean); } catch {
-                // Claude returned text instead of JSON — try to extract codes manually
                 const matches = clean.match(/[A-Z]{2,3}-\d{1,2}|00/g);
                 ids = matches || [];
               }
