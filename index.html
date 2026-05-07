@@ -148,10 +148,9 @@
     function Card({s, status, onToggle}) {
       const owned = status === "owned", rep = status === "repeated";
       return (
-        <div onClick={() => onToggle(s.id)} style={{background:owned?"rgba(62,207,142,.15)":rep?"rgba(245,200,66,.15)":"#111520",border:`1.5px solid ${owned?"#3ecf8e":rep?"#f5c842":"#252840"}`,borderRadius:8,padding:"6px 8px",cursor:"pointer",display:"flex",alignItems:"center",gap:6,userSelect:"none"}}>
-          <span style={{fontSize:13}}>{owned?"✅":rep?"🔁":"◻️"}</span>
-          <span style={{color:"#4a5270",fontFamily:"monospace",fontSize:10,minWidth:52}}>{s.id}</span>
-          <span style={{color:"#c8ccee",fontSize:11.5,flex:1}}>{s.name}</span>
+        <div onClick={() => onToggle(s.id)} style={{background:owned?"rgba(62,207,142,.15)":rep?"rgba(245,200,66,.15)":"#111520",border:`1.5px solid ${owned?"#3ecf8e":rep?"#f5c842":"#252840"}`,borderRadius:8,padding:"8px 10px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,userSelect:"none"}}>
+          <span style={{fontSize:14}}>{owned?"✅":rep?"🔁":"◻️"}</span>
+          <span style={{color:owned?"#3ecf8e":rep?"#f5c842":"#dde0ff",fontFamily:"monospace",fontSize:13,fontWeight:700}}>{s.id}</span>
         </div>
       );
     }
@@ -218,42 +217,61 @@
         return null;
       };
 
-      const PROMPT_STICKER = `You are reading the BACK of a loose Panini FIFA World Cup 2026 sticker.
-The sticker code appears in the TOP RIGHT corner of the back, in a dark rounded rectangle.
-Format examples: "SCO 11", "FWC 19", "MEX 7", "COL 3", "CC 4", "00"
-IMPORTANT: In the app, codes use a dash instead of space: SCO-11, FWC-19, MEX-7, COL-3, CC-4, 00.
-Read the code carefully and return ONLY a JSON array with that single code, converted to dash format.
-Example: if you see "SCO 11" return ["SCO-11"]
-If you see "00" return ["00"]
+      const PROMPT_STICKER = `You are reading the BACK of Panini FIFA World Cup 2026 stickers.
+There may be 1 or many stickers in the photo — find ALL of them.
+
+WHERE TO FIND THE CODE:
+- Each sticker back has a code in the TOP RIGHT corner inside a dark rounded rectangle
+- The code is printed in WHITE or LIGHT text on a DARK background
+- Format: 2-3 letter country code + space + number (e.g. "NED 14", "BRA 14", "FWC 15", "QAT 10")
+- Some stickers may be rotated or at an angle — read them regardless of orientation
+
+CODES TO LOOK FOR:
+- Country codes: NED, BRA, MEX, ARG, COL, SCO, FRA, ESP, GER, URU, CAN, USA, QAT, MAR, IRN, KOR, RSA, TUR, GHA, PAR, HAI, FWC, etc.
+- Numbers: 1 through 20
+- Special: "00" for Panini logo sticker
+
+OUTPUT FORMAT — convert space to dash:
+- "NED 14" → "NED-14"
+- "FWC 15" → "FWC-15"
+- "00" → "00"
+
+Return ONLY a JSON array with ALL codes found. Examples:
+["NED-14"] — if one sticker
+["NED-14","BRA-14","PAR-1","QAT-10","TUR-18","GHA-7","FWC-15"] — if many stickers
+
 Return ONLY the JSON array, nothing else.`;
 
-      const PROMPT_ALBUM = `You are analyzing a photo of a Panini FIFA World Cup 2026 sticker album page. The photo may be rotated or show two pages side by side — analyze it regardless of orientation.
+      const PROMPT_ALBUM = `You are analyzing a photo of a Panini FIFA World Cup 2026 sticker album. The photo may show one or two open pages, and may be at an angle or partially rotated.
 
-HOW THIS ALBUM WORKS:
-- Each sticker slot shows a country code + number printed inside it, e.g. "COL 7", "MEX 3", "FWC 2", "COL 13".
-- The code is printed in WHITE TEXT on the ORANGE/COLORED background of the empty slot.
-- The number appears LARGE in the slot, and the country code appears smaller above or near it.
+HOW EMPTY SLOTS LOOK:
+- An empty slot has a LARGE white "26" logo shape in it (the World Cup 2026 trophy silhouette)
+- The slot has a COLORED background (orange, red, green, teal, yellow — depends on the country)
+- The country code is printed in small text ABOVE the slot shape (e.g. "MAR", "COL", "IRN")
+- The number is printed BELOW or NEXT TO the slot shape (e.g. "9", "15", "2")
+- Together they form the sticker code: "MAR 9" → MAR-9
 
-YOUR JOB — classify every slot you can see:
+HOW GLUED STICKERS LOOK:
+- A player's FACE/PHOTO fills the slot completely
+- You can see the player's image, jersey, and sometimes their name printed on the sticker
+- The country code and number are NOT visible (hidden under the sticker)
+- Deduce the code by: reading the country code printed above/around the slot, and using the sequential order of the surrounding slots
 
-MISSING (empty slot): The slot is empty and you can READ the code printed inside it.
-→ Add to "missing" list.
+WHAT TO DO:
+1. Find the country code for the page (e.g. MAR, COL, IRN — printed large on the page)
+2. Go through each slot 1-20 systematically
+3. If the slot has a player photo = OWNED
+4. If the slot shows the "26" trophy shape with visible number = MISSING
 
-OWNED (sticker glued): A player photo/image is covering the slot. You CANNOT see the code because it is hidden under the sticker.
-→ Deduce the code from: the player name printed on the sticker, OR the sequential numbering of surrounding slots.
-→ Add to "owned" list.
+IMPORTANT:
+- Each country has stickers 1 through 20
+- Sticker 1 is always the country emblem (shiny/FOIL, looks different)
+- Sticker 13 is always a team photo (wider than the others)
+- The photo may show TWO countries (two pages) — analyze BOTH fully
+- Use the visible numbers to confirm which slot is which
 
-RULES:
-- Codes format in output: use dash, e.g. COL-7, MEX-3, FWC-2, COL-13
-- Country codes are 2-3 letters: COL, MEX, ARG, BRA, FRA, ESP, GER, ENG, POR, URU, CAN, USA, SCO, etc.
-- Numbers go from 1 to 20 per country (plus COL-1 is the emblem FOIL sticker)
-- Special intro stickers: FWC-1 through FWC-19, and "00" for the Panini logo
-- Coca-Cola specials: CC-1 through CC-12
-- Be thorough — scan the ENTIRE image including edges and corners
-- If the photo shows two pages, analyze BOTH pages
-
-Return ONLY a valid JSON object, nothing else:
-{"owned": ["COL-4","COL-8","COL-10"], "missing": ["COL-2","COL-3","COL-5","COL-6","COL-7","COL-9"]}`;
+Return ONLY a JSON object, nothing else:
+{"owned":["MAR-3","MAR-4","MAR-7"],"missing":["MAR-1","MAR-2","MAR-5","MAR-6"]}`;
 
       const parseAlbumJSON = (text) => {
         const clean = text.replace(/```json|```/g,"").trim();
@@ -482,6 +500,7 @@ Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","S
       const [showAI, setShowAI] = useState(false);
       const [toast, setToast] = useState(null);
       const [grp, setGrp] = useState("all");
+      const [showExport, setShowExport] = useState(false);
 
       const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
 
@@ -508,6 +527,34 @@ Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","S
         setShowAI(false);
       }, []);
 
+      const exportData = () => {
+        const data = JSON.stringify(col, null, 2);
+        const blob = new Blob([data], {type:"application/json"});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "panini_coleccion.json"; a.click();
+        URL.revokeObjectURL(url);
+        showToast("📥 Archivo guardado!");
+      };
+
+      const importData = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const parsed = JSON.parse(ev.target.result);
+            if (parsed.o && parsed.r) {
+              setCol(parsed);
+              saveCol(parsed);
+              showToast("✅ Coleccion importada!");
+            } else { showToast("❌ Archivo invalido","err"); }
+          } catch { showToast("❌ Error al leer archivo","err"); }
+        };
+        reader.readAsText(file);
+        e.target.value = "";
+      };
+
       const totalOwned = Object.keys(col.o).length;
       const totalRep = Object.keys(col.r).length;
       const pct = Math.round(totalOwned / TOTAL * 100);
@@ -530,6 +577,9 @@ Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","S
                   <div style={{fontWeight:900,color:"#dde0ff",fontSize:16}}>Panini WC 2026</div>
                   <div style={{color:"#5a6080",fontSize:11}}>Mi coleccion · {TOTAL} cromos</div>
                 </div>
+                <input type="file" accept=".json" id="imp" style={{display:"none"}} onChange={importData} />
+                <button onClick={() => document.getElementById("imp").click()} title="Importar coleccion" style={{padding:"8px 10px",borderRadius:8,border:"1px solid #252840",background:"#1c1f35",color:"#dde0ff",fontWeight:700,fontSize:13,cursor:"pointer"}}>📂</button>
+                <button onClick={exportData} title="Exportar coleccion" style={{padding:"8px 10px",borderRadius:8,border:"1px solid #252840",background:"#1c1f35",color:"#dde0ff",fontWeight:700,fontSize:13,cursor:"pointer"}}>💾</button>
                 <button onClick={() => setShowAI(true)} style={{padding:"8px 14px",borderRadius:8,border:"none",background:"#4d6ef5",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer"}}>🤖 IA</button>
               </div>
               <div style={{background:"#1c1f35",borderRadius:4,height:6,marginBottom:7,overflow:"hidden"}}>
