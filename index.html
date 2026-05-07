@@ -200,7 +200,9 @@
 
     function Scanner({onClose, onApply, col}) {
       const [img, setImg] = useState(null);
+      const [img2, setImg2] = useState(null);
       const [preview, setPreview] = useState(null);
+      const [preview2, setPreview2] = useState(null);
       const [loading, setLoading] = useState(false);
       const [result, setResult] = useState(null);
       const [manual, setManual] = useState("");
@@ -208,6 +210,7 @@
       const [keyInput, setKeyInput] = useState("");
       const [showKeySetup, setShowKeySetup] = useState(() => !getApiKey());
       const ref = useRef();
+      const ref2 = useRef();
 
       const getInfo = (id) => {
         for (const c of ORDER) {
@@ -291,21 +294,27 @@ Si un espacio no se puede determinar con certeza, no lo incluyas en ninguna list
             const imgContent = {type:"image",source:{type:"base64",media_type:img.type||"image/jpeg",data:b64}};
 
             if (mode === "album") {
-              // First attempt
-              let text = await callClaude([{role:"user",content:[imgContent,{type:"text",text:PROMPT_ALBUM}]}]);
+              // Build content array - one or two images
+              const imgContents = [imgContent];
+              if (img2) {
+                const b64b = await toB64(img2);
+                imgContents.push({type:"image",source:{type:"base64",media_type:img2.type||"image/jpeg",data:b64b}});
+              }
+              const multiPrompt = img2
+                ? PROMPT_ALBUM + "
+
+NOTA: Se te envían 2 fotos — una por cada página del álbum. Analiza AMBAS imágenes."
+                : PROMPT_ALBUM;
+
+              let text = await callClaude([{role:"user",content:[...imgContents,{type:"text",text:multiPrompt}]}]);
               let parsed = parseAlbumJSON(text);
 
-              // If result is empty, retry with a simpler more direct prompt
+              // If result is empty, retry
               if ((parsed.owned||[]).length === 0 && (parsed.missing||[]).length === 0) {
-                const RETRY_PROMPT = `Look at this Panini FIFA World Cup 2026 album photo carefully.
-List ALL sticker slots you can see. For each slot:
-- If it shows a PLAYER PHOTO glued in = owned
-- If it shows an EMPTY space with a code like "SEN 7" printed on it = missing
-
-The country code + number are printed in white text inside each empty slot (e.g. SEN 3, IRN 12, MEX 7).
-
-Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","SEN-5"]}`;
-                text = await callClaude([{role:"user",content:[imgContent,{type:"text",text:RETRY_PROMPT}]}]);
+                const RETRY_PROMPT = img2
+                  ? "Mira estas 2 fotos de páginas de un álbum Panini Mundial 2026. En cada foto identifica el país y qué espacios tienen figurita pegada vs vacíos. Devuelve SOLO JSON: {"owned":["COL-1"],"missing":["COL-2"]}"
+                  : "Mira esta foto de una página de álbum Panini Mundial 2026. Identifica el país y qué espacios tienen figurita pegada vs vacíos. Devuelve SOLO JSON: {"owned":["COL-1"],"missing":["COL-2"]}";
+                text = await callClaude([{role:"user",content:[...imgContents,{type:"text",text:RETRY_PROMPT}]}]);
                 parsed = parseAlbumJSON(text);
               }
 
@@ -372,7 +381,7 @@ Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","S
               <>
             <div style={{display:"flex",gap:6,marginBottom:12}}>
               {[["photo","📷 Figurita"],["album","📖 Página"],["manual","🔢 Manual"]].map(([m,label]) => (
-                <button key={m} onClick={() => {setMode(m);setResult(null);setImg(null);setPreview(null);}} style={{flex:1,padding:8,borderRadius:8,background:mode===m?"#4d6ef5":"#1c1f35",color:mode===m?"#fff":"#5a6080",border:"none",cursor:"pointer",fontWeight:600,fontSize:11}}>
+                <button key={m} onClick={() => {setMode(m);setResult(null);setImg(null);setPreview(null);setImg2(null);setPreview2(null);}} style={{flex:1,padding:8,borderRadius:8,background:mode===m?"#4d6ef5":"#1c1f35",color:mode===m?"#fff":"#5a6080",border:"none",cursor:"pointer",fontWeight:600,fontSize:11}}>
                   {label}
                 </button>
               ))}
@@ -381,16 +390,51 @@ Respond ONLY with JSON: {"owned":["SEN-1","SEN-4"],"missing":["SEN-2","SEN-3","S
             {mode==="album" && <div style={{color:"#5a6080",fontSize:11,marginBottom:8}}>Foto de una <b style={{color:"#dde0ff"}}>página del álbum</b>. Detecta qué está pegado y qué falta.</div>}
             {(mode==="photo"||mode==="album") && (
               <>
-                <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e => { if(e.target.files[0]){setPreview(URL.createObjectURL(e.target.files[0]));setImg(e.target.files[0]);setResult(null); e.target.value="";}}} />
-                {preview ? (
-                  <div style={{position:"relative",marginBottom:10}}>
-                    <img src={preview} alt="" style={{width:"100%",borderRadius:8,maxHeight:180,objectFit:"contain",background:"#15182a"}} />
-                    <button onClick={() => {setPreview(null);setImg(null);setResult(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.7)",border:"none",color:"#fff",borderRadius:20,width:26,height:26,cursor:"pointer",fontSize:14}}>✕</button>
+                <input ref={ref} type="file" accept="image/*" style={{display:"none"}} onChange={e => {
+                  if(e.target.files[0]){setPreview(URL.createObjectURL(e.target.files[0]));setImg(e.target.files[0]);setResult(null); e.target.value="";}
+                }} />
+                <input ref={ref2} type="file" accept="image/*" style={{display:"none"}} onChange={e => {
+                  if(e.target.files[0]){setPreview2(URL.createObjectURL(e.target.files[0]));setImg2(e.target.files[0]);setResult(null); e.target.value="";}
+                }} />
+                {mode==="album" ? (
+                  <div style={{marginBottom:10}}>
+                    <div style={{display:"flex",gap:8,marginBottom:6}}>
+                      <div style={{flex:1}}>
+                        <div style={{color:"#5a6080",fontSize:10,marginBottom:4,textAlign:"center"}}>Página izquierda</div>
+                        {preview ? (
+                          <div style={{position:"relative"}}>
+                            <img src={preview} alt="" style={{width:"100%",borderRadius:8,height:110,objectFit:"cover",background:"#15182a"}} />
+                            <button onClick={() => {setPreview(null);setImg(null);setResult(null);}} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,.8)",border:"none",color:"#fff",borderRadius:20,width:22,height:22,cursor:"pointer",fontSize:12,lineHeight:"22px",textAlign:"center"}}>✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => ref.current.click()} style={{width:"100%",height:110,borderRadius:8,border:"2px dashed #252840",background:"#15182a",color:"#5a6080",cursor:"pointer",fontSize:20}}>📷</button>
+                        )}
+                      </div>
+                      <div style={{flex:1}}>
+                        <div style={{color:"#5a6080",fontSize:10,marginBottom:4,textAlign:"center"}}>Página derecha <span style={{color:"#4d6ef5"}}>(opcional)</span></div>
+                        {preview2 ? (
+                          <div style={{position:"relative"}}>
+                            <img src={preview2} alt="" style={{width:"100%",borderRadius:8,height:110,objectFit:"cover",background:"#15182a"}} />
+                            <button onClick={() => {setPreview2(null);setImg2(null);setResult(null);}} style={{position:"absolute",top:4,right:4,background:"rgba(0,0,0,.8)",border:"none",color:"#fff",borderRadius:20,width:22,height:22,cursor:"pointer",fontSize:12,lineHeight:"22px",textAlign:"center"}}>✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => ref2.current.click()} style={{width:"100%",height:110,borderRadius:8,border:"2px dashed #252840",background:"#15182a",color:"#5a6080",cursor:"pointer",fontSize:20}}>📷</button>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{color:"#5a6080",fontSize:10,textAlign:"center"}}>Puedes subir 1 o 2 fotos — una por página</div>
                   </div>
                 ) : (
-                  <button onClick={() => ref.current.click()} style={{width:"100%",padding:20,borderRadius:10,border:"2px dashed #252840",background:"#15182a",color:"#dde0ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>
-                    🖼️ Seleccionar foto
-                  </button>
+                  preview ? (
+                    <div style={{position:"relative",marginBottom:10}}>
+                      <img src={preview} alt="" style={{width:"100%",borderRadius:8,maxHeight:180,objectFit:"contain",background:"#15182a"}} />
+                      <button onClick={() => {setPreview(null);setImg(null);setResult(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.7)",border:"none",color:"#fff",borderRadius:20,width:26,height:26,cursor:"pointer",fontSize:14}}>✕</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => ref.current.click()} style={{width:"100%",padding:20,borderRadius:10,border:"2px dashed #252840",background:"#15182a",color:"#dde0ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>
+                      🖼️ Seleccionar foto
+                    </button>
+                  )
                 )}
               </>
             )}
