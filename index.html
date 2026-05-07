@@ -123,7 +123,7 @@
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
-        body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1500, messages }),
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1500, messages }),
       });
       let d;
       try { d = await resp.json(); } catch { throw new Error("Error de red. Verifica tu conexion."); }
@@ -217,61 +217,47 @@
         return null;
       };
 
-      const PROMPT_STICKER = `You are reading the BACK of Panini FIFA World Cup 2026 stickers.
-There may be 1 or many stickers in the photo — find ALL of them.
+      const PROMPT_STICKER = `Analiza esta foto del REVERSO de figuritas Panini del Mundial 2026.
 
-WHERE TO FIND THE CODE:
-- Each sticker back has a code in the TOP RIGHT corner inside a dark rounded rectangle
-- The code is printed in WHITE or LIGHT text on a DARK background
-- Format: 2-3 letter country code + space + number (e.g. "NED 14", "BRA 14", "FWC 15", "QAT 10")
-- Some stickers may be rotated or at an angle — read them regardless of orientation
+REGLAS:
+1. El código de cada figurita aparece en la ESQUINA SUPERIOR DERECHA del reverso, dentro de un rectángulo oscuro con texto claro.
+2. El formato es: 2-3 letras + espacio + número. Ejemplos: "SCO 11", "FWC 19", "MEX 7", "COL 3".
+3. Puede haber UNA o VARIAS figuritas en la foto. Encuentra TODAS las que puedas leer claramente.
+4. Las figuritas pueden estar rotadas o en ángulo — léelas igual.
+5. NO inventes códigos. Si no puedes leer claramente un código, ignóralo.
+6. Convierte el espacio a guión en el resultado: "SCO 11" → "SCO-11", "FWC 19" → "FWC-19".
 
-CODES TO LOOK FOR:
-- Country codes: NED, BRA, MEX, ARG, COL, SCO, FRA, ESP, GER, URU, CAN, USA, QAT, MAR, IRN, KOR, RSA, TUR, GHA, PAR, HAI, FWC, etc.
-- Numbers: 1 through 20
-- Special: "00" for Panini logo sticker
+Devuelve ÚNICAMENTE un JSON array con los códigos encontrados:
+["SCO-11","FWC-19","MEX-7"]
 
-OUTPUT FORMAT — convert space to dash:
-- "NED 14" → "NED-14"
-- "FWC 15" → "FWC-15"
-- "00" → "00"
+Si no puedes leer ningún código claramente, devuelve: []`;
 
-Return ONLY a JSON array with ALL codes found. Examples:
-["NED-14"] — if one sticker
-["NED-14","BRA-14","PAR-1","QAT-10","TUR-18","GHA-7","FWC-15"] — if many stickers
+      const PROMPT_ALBUM = `Analiza esta foto de un álbum Panini del Mundial 2026. Sigue estas reglas estrictamente. NO inventes información.
 
-Return ONLY the JSON array, nothing else.`;
+REGLAS:
 
-      const PROMPT_ALBUM = `You are analyzing a photo of a Panini FIFA World Cup 2026 sticker album. The photo may show one or two open pages, and may be at an angle or partially rotated.
+1. NO inventes países ni códigos. Solo usa códigos que realmente aparezcan en la imagen.
+   Si no puedes leer claramente el código, ignora ese espacio.
 
-HOW EMPTY SLOTS LOOK:
-- An empty slot has a LARGE white "26" logo shape in it (the World Cup 2026 trophy silhouette)
-- The slot has a COLORED background (orange, red, green, teal, yellow — depends on the country)
-- The country code is printed in small text ABOVE the slot shape (e.g. "MAR", "COL", "IRN")
-- The number is printed BELOW or NEXT TO the slot shape (e.g. "9", "15", "2")
-- Together they form the sticker code: "MAR 9" → MAR-9
+2. NO confundas páginas de países con secciones especiales.
+   FWC no es un país. CC no es un país. Son secciones especiales.
 
-HOW GLUED STICKERS LOOK:
-- A player's FACE/PHOTO fills the slot completely
-- You can see the player's image, jersey, and sometimes their name printed on the sticker
-- The country code and number are NOT visible (hidden under the sticker)
-- Deduce the code by: reading the country code printed above/around the slot, and using the sequential order of the surrounding slots
+3. Una figurita FALTA solo si: ves claramente un espacio vacío Y dentro de ese espacio aparece el código con número impreso (ej: "COL 15").
 
-WHAT TO DO:
-1. Find the country code for the page (e.g. MAR, COL, IRN — printed large on the page)
-2. Go through each slot 1-20 systematically
-3. If the slot has a player photo = OWNED
-4. If the slot shows the "26" trophy shape with visible number = MISSING
+4. Una figurita YA ESTÁ solo si: ves una figurita/foto de jugador pegada encima del espacio.
 
-IMPORTANT:
-- Each country has stickers 1 through 20
-- Sticker 1 is always the country emblem (shiny/FOIL, looks different)
-- Sticker 13 is always a team photo (wider than the others)
-- The photo may show TWO countries (two pages) — analyze BOTH fully
-- Use the visible numbers to confirm which slot is which
+5. NO marques como vacío un espacio que tiene figurita pegada.
+   NO marques como completado un espacio que está vacío.
 
-Return ONLY a JSON object, nothing else:
-{"owned":["MAR-3","MAR-4","MAR-7"],"missing":["MAR-1","MAR-2","MAR-5","MAR-6"]}`;
+6. Si una página no se ve claramente (ángulo, corte, desenfoque), NO la incluyas en el resultado.
+
+7. Cada país tiene exactamente figuritas del 1 al 20.
+   Códigos de países: COL, MEX, MAR, SCO, IRN, ECU, BRA, ARG, CZE, RSA, URU, FRA, ESP, GER, ENG, POR, CAN, USA, TUR, GHA, NED, PAR, QAT, HAI, KOR, UZB, etc.
+
+Devuelve ÚNICAMENTE JSON válido, sin explicaciones:
+{"owned":["COL-3","COL-4"],"missing":["COL-1","COL-2"]}
+
+Si un espacio no se puede determinar con certeza, no lo incluyas en ninguna lista.`;
 
       const parseAlbumJSON = (text) => {
         const clean = text.replace(/```json|```/g,"").trim();
