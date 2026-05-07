@@ -301,9 +301,7 @@ Si un espacio no se puede determinar con certeza, no lo incluyas en ninguna list
                 imgContents.push({type:"image",source:{type:"base64",media_type:img2.type||"image/jpeg",data:b64b}});
               }
               const multiPrompt = img2
-                ? PROMPT_ALBUM + "
-
-NOTA: Se te envían 2 fotos — una por cada página del álbum. Analiza AMBAS imágenes."
+                ? PROMPT_ALBUM + "\n\nNOTA: Se te envian 2 fotos, una por cada pagina del album. Analiza AMBAS imagenes."
                 : PROMPT_ALBUM;
 
               let text = await callClaude([{role:"user",content:[...imgContents,{type:"text",text:multiPrompt}]}]);
@@ -312,8 +310,8 @@ NOTA: Se te envían 2 fotos — una por cada página del álbum. Analiza AMBAS i
               // If result is empty, retry
               if ((parsed.owned||[]).length === 0 && (parsed.missing||[]).length === 0) {
                 const RETRY_PROMPT = img2
-                  ? "Mira estas 2 fotos de páginas de un álbum Panini Mundial 2026. En cada foto identifica el país y qué espacios tienen figurita pegada vs vacíos. Devuelve SOLO JSON: {"owned":["COL-1"],"missing":["COL-2"]}"
-                  : "Mira esta foto de una página de álbum Panini Mundial 2026. Identifica el país y qué espacios tienen figurita pegada vs vacíos. Devuelve SOLO JSON: {"owned":["COL-1"],"missing":["COL-2"]}";
+                  ? "Mira estas 2 fotos de paginas de un album Panini Mundial 2026. Identifica el pais y que espacios tienen figurita pegada vs vacios. Devuelve SOLO JSON valido: {owned:[COL-1],missing:[COL-2]}"
+                  : "Mira esta foto de una pagina de album Panini Mundial 2026. Identifica el pais y que espacios tienen figurita pegada vs vacios. Devuelve SOLO JSON valido: {owned:[COL-1],missing:[COL-2]}";
                 text = await callClaude([{role:"user",content:[...imgContents,{type:"text",text:RETRY_PROMPT}]}]);
                 parsed = parseAlbumJSON(text);
               }
