@@ -425,16 +425,18 @@ NOTA: Se te envían 2 fotos — una por cada página del álbum. Analiza AMBAS i
                     <div style={{color:"#5a6080",fontSize:10,textAlign:"center"}}>Puedes subir 1 o 2 fotos — una por página</div>
                   </div>
                 ) : (
-                  preview ? (
-                    <div style={{position:"relative",marginBottom:10}}>
-                      <img src={preview} alt="" style={{width:"100%",borderRadius:8,maxHeight:180,objectFit:"contain",background:"#15182a"}} />
-                      <button onClick={() => {setPreview(null);setImg(null);setResult(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.7)",border:"none",color:"#fff",borderRadius:20,width:26,height:26,cursor:"pointer",fontSize:14}}>✕</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => ref.current.click()} style={{width:"100%",padding:20,borderRadius:10,border:"2px dashed #252840",background:"#15182a",color:"#dde0ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>
-                      🖼️ Seleccionar foto
-                    </button>
-                  )
+                  <>
+                    {preview ? (
+                      <div style={{position:"relative",marginBottom:10}}>
+                        <img src={preview} alt="" style={{width:"100%",borderRadius:8,maxHeight:180,objectFit:"contain",background:"#15182a"}} />
+                        <button onClick={() => {setPreview(null);setImg(null);setResult(null);}} style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.7)",border:"none",color:"#fff",borderRadius:20,width:26,height:26,cursor:"pointer",fontSize:14}}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => ref.current.click()} style={{width:"100%",padding:20,borderRadius:10,border:"2px dashed #252840",background:"#15182a",color:"#dde0ff",cursor:"pointer",fontSize:13,fontWeight:600,marginBottom:10}}>
+                        🖼️ Seleccionar foto
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             )}
